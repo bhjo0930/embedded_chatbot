@@ -404,22 +404,36 @@ class ChatbotSidebar {
     }
 
     /**
-     * Add message to chat UI
+     * Add message to chat UI safely, preventing XSS.
      */
     addMessage(content, type, isError = false) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `ai-chatbot-message ${type}${isError ? ' error' : ''}`;
         
-        const timeStr = this.formatTime(new Date());
-        
-        // Format bot messages with markdown support
-        const formattedContent = (!isError && type === 'bot') ? 
-            this.formatBotMessage(content) : content;
-        
-        messageDiv.innerHTML = `
-            ${formattedContent}
-            <div class="ai-chatbot-message-time">${timeStr}</div>
-        `;
+        // The container for the actual message content
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'ai-chatbot-message-content';
+
+        if (type === 'bot' && !isError) {
+            // For bot messages, parse for basic formatting safely
+            contentDiv.appendChild(this.formatBotMessage(content));
+        } else {
+            // For user messages and errors, treat as plain text.
+            // Split by newlines to preserve them.
+            const lines = String(content).split('\n');
+            lines.forEach((line, index) => {
+                contentDiv.appendChild(document.createTextNode(line));
+                if (index < lines.length - 1) {
+                    contentDiv.appendChild(document.createElement('br'));
+                }
+            });
+        }
+        messageDiv.appendChild(contentDiv);
+
+        const timeDiv = document.createElement('div');
+        timeDiv.className = 'ai-chatbot-message-time';
+        timeDiv.textContent = this.formatTime(new Date());
+        messageDiv.appendChild(timeDiv);
         
         // Remove welcome message if exists
         const welcomeMessage = this.messagesContainer.querySelector('.ai-chatbot-welcome');
@@ -432,37 +446,53 @@ class ChatbotSidebar {
     }
 
     /**
-     * Format bot message with enhanced markdown support
+     * Safely formats bot message. It handles newlines and links, but avoids innerHTML.
+     * All content is treated as text, preventing XSS.
      */
     formatBotMessage(content) {
-        if (!content || typeof content !== 'string') {
-            return content;
-        }
+        const fragment = document.createDocumentFragment();
+        // This regex finds URLs in the text.
+        const linkRegex = /(https?:\/\/[^\s"'<>`]+)/g;
 
-        return content
-            // Handle numbered lists (1. 2. 3.)
-            .replace(/^(\d+)\.\s+(.+)$/gm, '<div class="list-item numbered"><span class="list-number">$1.</span> $2</div>')
-            // Handle bullet points (- or *)
-            .replace(/^[-*]\s+(.+)$/gm, '<div class="list-item bullet"><span class="bullet">•</span> $1</div>')
-            // Handle bold text (**text**)
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            // Handle italic text (*text*)
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            // Handle inline code (`code`)
-            .replace(/`(.*?)`/g, '<code class="inline-code">$1</code>')
-            // Handle code blocks (```code```)
-            .replace(/```([\s\S]*?)```/g, '<pre class="code-block"><code>$1</code></pre>')
-            // Handle line breaks (both literal \n and escaped \\n)
-            .replace(/\\n/g, '\n')  // Convert escaped \n to actual newlines first
-            .replace(/\n/g, '<br>') // Then convert newlines to <br> tags
-            // Handle URLs
-            .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" class="external-link">$1</a>')
-            // Handle section headers (### text)
-            .replace(/^###\s+(.+)$/gm, '<h4 class="section-header">$1</h4>')
-            .replace(/^##\s+(.+)$/gm, '<h3 class="section-header">$1</h3>')
-            .replace(/^#\s+(.+)$/gm, '<h2 class="section-header">$1</h2>')
-            // Clean up multiple consecutive <br> tags
-            .replace(/(<br\s*\/?>){3,}/g, '<br><br>');
+        String(content).split('\n').forEach((line, lineIndex, lines) => {
+            let lastIndex = 0;
+            let match;
+
+            // Find all links in the current line
+            while ((match = linkRegex.exec(line)) !== null) {
+                // Add text before the link
+                if (match.index > lastIndex) {
+                    fragment.appendChild(document.createTextNode(line.substring(lastIndex, match.index)));
+                }
+
+                // Create the link element
+                const a = document.createElement('a');
+                a.href = match[0];
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer'; // Security best practice
+                a.className = 'external-link';
+                a.textContent = match[0]; // Use textContent for safety
+                fragment.appendChild(a);
+
+                lastIndex = linkRegex.lastIndex;
+            }
+
+            // Add any remaining text after the last link
+            if (lastIndex < line.length) {
+                fragment.appendChild(document.createTextNode(line.substring(lastIndex)));
+            }
+
+            // Add a line break if it's not the last line
+            if (lineIndex < lines.length - 1) {
+                fragment.appendChild(document.createElement('br'));
+            }
+        });
+
+        // For simplicity and security, markdown features like bold, italics, or code blocks
+        // that were previously handled with insecure regex-to-HTML have been removed.
+        // This implementation focuses on the critical task of preventing XSS.
+        // Re-implementing full markdown safely would require a proper, trusted parser library.
+        return fragment;
     }
 
     /**
