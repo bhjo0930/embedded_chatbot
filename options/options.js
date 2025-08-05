@@ -632,12 +632,19 @@ class OptionsPage {
         this.connectionDot.className = `status-dot ${connected ? 'connected' : 'disconnected'}`;
         this.connectionText.textContent = connected ? 'Connected' : 'Disconnected';
         
+        // Clear previous result
+        this.connectionResult.textContent = '';
+
         if (connected) {
-            this.connectionResult.innerHTML = '<div class="success-message">✅ Connection successful</div>';
+            const successDiv = document.createElement('div');
+            successDiv.className = 'success-message';
+            successDiv.textContent = '✅ Connection successful';
+            this.connectionResult.appendChild(successDiv);
         } else if (error) {
-            this.connectionResult.innerHTML = `<div class="error-message">❌ ${error}</div>`;
-        } else {
-            this.connectionResult.innerHTML = '';
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = `❌ ${error}`;
+            this.connectionResult.appendChild(errorDiv);
         }
     }
 
@@ -950,12 +957,23 @@ class OptionsPage {
             warning: '⚠️'
         }[type] || 'ℹ️';
         
-        toast.innerHTML = `
-            <span class="toast-icon">${icon}</span>
-            <span class="toast-message">${message}</span>
-            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
-        `;
-        
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'toast-icon';
+        iconSpan.textContent = icon;
+
+        const messageSpan = document.createElement('span');
+        messageSpan.className = 'toast-message';
+        messageSpan.textContent = message;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'toast-close';
+        closeBtn.textContent = '×';
+        closeBtn.addEventListener('click', () => toast.remove());
+
+        toast.appendChild(iconSpan);
+        toast.appendChild(messageSpan);
+        toast.appendChild(closeBtn);
+
         container.appendChild(toast);
         
         // Auto remove after 5 seconds

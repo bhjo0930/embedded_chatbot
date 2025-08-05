@@ -268,7 +268,7 @@ class ChatbotPopup {
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
         
-        // 마크다운 기본 지원 (링크, 볼드, 이탤릭)
+        // Sanitize and support basic markdown for bot messages
         if (!isError && type === 'bot') {
             contentDiv.innerHTML = this.formatBotMessage(content);
         } else {
@@ -309,7 +309,9 @@ class ChatbotPopup {
             return content;
         }
 
-        return content
+        const safeContent = DOMUtils.escapeHTML(content);
+
+        return safeContent
             // Handle numbered lists (1. 2. 3.)
             .replace(/^(\d+)\.\s+(.+)$/gm, '<div class="list-item numbered"><span class="list-number">$1.</span> $2</div>')
             // Handle bullet points (- or *)

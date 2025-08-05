@@ -412,10 +412,10 @@ class ChatbotSidebar {
         
         const timeStr = this.formatTime(new Date());
         
-        // Format bot messages with markdown support
-        const formattedContent = (!isError && type === 'bot') ? 
-            this.formatBotMessage(content) : content;
-        
+        // Sanitize and format content
+        const formattedContent = (!isError && type === 'bot') ?
+            this.formatBotMessage(content) : DOMUtils.escapeHTML(content);
+
         messageDiv.innerHTML = `
             ${formattedContent}
             <div class="ai-chatbot-message-time">${timeStr}</div>
@@ -439,7 +439,9 @@ class ChatbotSidebar {
             return content;
         }
 
-        return content
+        const safeContent = DOMUtils.escapeHTML(content);
+
+        return safeContent
             // Handle numbered lists (1. 2. 3.)
             .replace(/^(\d+)\.\s+(.+)$/gm, '<div class="list-item numbered"><span class="list-number">$1.</span> $2</div>')
             // Handle bullet points (- or *)
