@@ -142,7 +142,7 @@ class ChatbotSidebar {
             <!-- Category Selection -->
             <div class="ai-chatbot-categories">
                 <div class="ai-chatbot-category-header">
-                    <span class="ai-chatbot-category-title">Select AI Agent:</span>
+                    <span class="ai-chatbot-category-title">Select AI Agent: <span class="ai-chatbot-selected-category">General</span></span>
                     <button class="ai-chatbot-category-toggle" title="Toggle Categories">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M7,10L12,15L17,10H7Z"/>
@@ -568,6 +568,9 @@ class ChatbotSidebar {
         // Update header
         this.updateBotHeader(category, icon);
         
+        // Update selected category display
+        this.updateSelectedCategoryDisplay(category);
+        
         // Save selection to storage
         this.saveCategorySelection(category);
         
@@ -593,6 +596,28 @@ class ChatbotSidebar {
         };
         
         this.botName.textContent = categoryNames[category] || 'AI Assistant';
+    }
+
+    /**
+     * Update selected category display in header
+     */
+    updateSelectedCategoryDisplay(category) {
+        const selectedCategorySpan = this.sidebar.querySelector('.ai-chatbot-selected-category');
+        
+        if (selectedCategorySpan) {
+            const categoryDisplayNames = {
+                GENERAL: 'General',
+                HR: 'HR',
+                IT: 'IT',
+                DATA: 'Data',
+                FINANCE: 'Finance',
+                MARKETING: 'Marketing',
+                LEGAL: 'Legal',
+                SECURITY: 'Security'
+            };
+            
+            selectedCategorySpan.textContent = categoryDisplayNames[category] || 'General';
+        }
     }
 
     /**

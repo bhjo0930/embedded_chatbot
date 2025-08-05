@@ -738,6 +738,9 @@ class ChatbotPopup {
         // Update header
         this.updateBotHeader(category, icon);
         
+        // Update selected category display
+        this.updateSelectedCategoryDisplay(category);
+        
         // Save selection to storage
         this.saveCategorySelection(category);
         
@@ -763,6 +766,28 @@ class ChatbotPopup {
         };
         
         this.botName.textContent = categoryNames[category] || 'AI Assistant';
+    }
+
+    /**
+     * Update selected category display in header
+     */
+    updateSelectedCategoryDisplay(category) {
+        const selectedCategorySpan = document.querySelector('.selected-category');
+        
+        if (selectedCategorySpan) {
+            const categoryDisplayNames = {
+                GENERAL: 'General',
+                HR: 'HR',
+                IT: 'IT',
+                DATA: 'Data',
+                FINANCE: 'Finance',
+                MARKETING: 'Marketing',
+                LEGAL: 'Legal',
+                SECURITY: 'Security'
+            };
+            
+            selectedCategorySpan.textContent = categoryDisplayNames[category] || 'General';
+        }
     }
 
     /**
@@ -803,7 +828,7 @@ class ChatbotPopup {
     async loadCategorySelection() {
         try {
             const result = await chrome.storage.local.get(['selectedCategory']);
-            const savedCategory = result.selectedCategory || 'general';
+            const savedCategory = result.selectedCategory || 'GENERAL';
             
             // Find and click the saved category button
             const categoryButton = document.querySelector(`[data-category="${savedCategory}"]`);
