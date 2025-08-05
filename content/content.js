@@ -613,10 +613,20 @@ class ChatbotSidebar {
             };
             
             const messageContent = categoryMessages[category] || categoryMessages.GENERAL;
-            welcomeMessage.innerHTML = `
-                ${messageContent}
-                <div class="ai-chatbot-message-time">Just now</div>
-            `;
+            
+            // Clear existing content safely
+            welcomeMessage.textContent = '';
+            
+            // Create content elements safely
+            const contentDiv = document.createElement('div');
+            contentDiv.textContent = messageContent;
+            
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'ai-chatbot-message-time';
+            timeDiv.textContent = 'Just now';
+            
+            welcomeMessage.appendChild(contentDiv);
+            welcomeMessage.appendChild(timeDiv);
         }
     }
 
