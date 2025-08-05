@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot - Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+
+<body>
+    <div class="settings-container">
+        <header class="settings-header">
+            <div class="header-content">
+                <div class="icon-title">
+                    <div class="app-icon">🤖</div>
+                    <div>
+                        <h1>AI Chatbot Settings</h1>
+                        <p>Configure your n8n webhook integration</p>
+                    </div>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-dot" id="connection-dot"></div>
+                    <span id="connection-text">Checking connection...</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="settings-content">
+            <!-- Backend Selection -->
+            <section class="settings-section">
+                <div class="section-header">
+                    <h2>🔧 Backend Selection</h2>
+                    <p>Choose your AI backend service</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="backend-select">
+                        <strong>AI Backend</strong>
+                    </label>
+                    <select id="backend-select">
+                        <option value="n8n">n8n Webhook</option>
+                        <option value="ollama">Ollama</option>
+                    </select>
+                    <div class="form-help">
+                        Choose between n8n webhook integration or Ollama instance
+                    </div>
+                </div>
+            </section>
+
+            <!-- n8n Connection Settings -->
+            <section class="settings-section" id="n8n-settings">
+                <div class="section-header">
+                    <h2>🔗 n8n Connection Settings</h2>
+                    <p>Configure your n8n webhook endpoint</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="webhook-url">
+                        <strong>Webhook URL</strong>
+                        <span class="required">*</span>
+                    </label>
+                    <input type="url" id="webhook-url" placeholder="https://your-n8n-instance.com/webhook/chatbot">
+                    <div class="form-help">
+                        Enter the complete URL of your n8n webhook endpoint. This should be the URL that receives POST
+                        requests with chat messages.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="custom-headers">
+                        <strong>Custom Headers (JSON)</strong>
+                    </label>
+                    <textarea id="custom-headers" placeholder='{"Authorization": "Bearer token", "X-Custom": "value"}'
+                        rows="3"></textarea>
+                    <div class="form-help">
+                        Optional custom headers to send with webhook requests
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ollama Connection Settings -->
+            <section class="settings-section" id="ollama-settings" style="display: none;">
+                <div class="section-header">
+                    <h2>🦙 Ollama Connection Settings</h2>
+                    <p>Configure your Ollama instance</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="ollama-url">
+                        <strong>Ollama URL</strong>
+                        <span class="required">*</span>
+                    </label>
+                    <input type="url" id="ollama-url" placeholder="http://localhost:11434"
+                        value="http://localhost:11434">
+                    <div class="form-help">
+                        Enter the URL of your Ollama instance (default: http://localhost:11434)
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ollama-model">
+                        <strong>Model</strong>
+                    </label>
+                    <select id="ollama-model">
+                        <option value="">Auto-select best available model</option>
+                    </select>
+                    <div class="form-help">
+                        Select the Ollama model to use. Models will be loaded automatically when connected.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="temperature">
+                        <strong>Temperature</strong>
+                    </label>
+                    <div class="input-with-unit">
+                        <input type="number" id="temperature" min="0.1" max="2.0" step="0.1" value="0.7">
+                        <span class="input-unit">creativity</span>
+                    </div>
+                    <div class="form-help">
+                        Controls randomness in responses (0.1 = focused, 2.0 = creative)
+                    </div>
+                </div>
+
+                <div class="ollama-models-info" id="ollama-models-info">
+                    <div class="models-status">
+                        <span id="models-count">No models loaded</span>
+                        <button type="button" id="refresh-models" class="btn-link">Refresh</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- General Connection Settings -->
+            <section class="settings-section">
+                <div class="section-header">
+                    <h2>⚙️ General Settings</h2>
+                    <p>Common settings for all backends</p>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="api-timeout">
+                            <strong>Request Timeout</strong>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="api-timeout" min="5" max="600" value="30">
+                            <span class="input-unit">seconds</span>
+                        </div>
+                        <div class="form-help">
+                            Maximum time to wait for webhook response (5-600 seconds)
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="max-retries">
+                            <strong>Max Retries</strong>
+                        </label>
+                        <input type="number" id="max-retries" min="0" max="5" value="3">
+                        <div class="form-help">
+                            Number of retry attempts for failed requests
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="test-connection" class="btn-secondary">
+                        <span class="btn-icon">🔍</span>
+                        Test Connection
+                    </button>
+                    <div id="connection-result" class="connection-result"></div>
+                </div>
+            </section>
+
+            <!-- Chat Settings -->
+            <section class="settings-section">
+                <div class="section-header">
+                    <h2>💬 Chat Settings</h2>
+                    <p>Customize your chat experience</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="save-history" checked>
+                        <span class="checkbox-custom"></span>
+                        <div class="checkbox-content">
+                            <strong>Save Chat History</strong>
+                            <div class="form-help">Store conversation history locally in your browser</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="auto-scroll" checked>
+                        <span class="checkbox-custom"></span>
+                        <div class="checkbox-content">
+                            <strong>Auto Scroll</strong>
+                            <div class="form-help">Automatically scroll to new messages</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="notifications" checked>
+                        <span class="checkbox-custom"></span>
+                        <div class="checkbox-content">
+                            <strong>Enable Notifications</strong>
+                            <div class="form-help">Show browser notifications for new messages</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="show-toggle-button" checked>
+                        <span class="checkbox-custom"></span>
+                        <div class="checkbox-content">
+                            <strong>Show Toggle Button</strong>
+                            <div class="form-help">Display the floating toggle button on web pages</div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="theme">
+                        <strong>Theme</strong>
+                    </label>
+                    <select id="theme">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="auto">Auto (System)</option>
+                    </select>
+                    <div class="form-help">
+                        Choose your preferred color theme
+                    </div>
+                </div>
+            </section>
+
+            <!-- Data Management -->
+            <section class="settings-section">
+                <div class="section-header">
+                    <h2>📊 Data Management</h2>
+                    <p>Manage your stored data and privacy</p>
+                </div>
+
+                <div class="data-stats" id="data-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">Messages Stored</div>
+                        <div class="stat-value" id="message-count">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Storage Used</div>
+                        <div class="stat-value" id="storage-size">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Last Cleanup</div>
+                        <div class="stat-value" id="last-cleanup">Never</div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" id="export-data" class="btn-secondary">
+                        <span class="btn-icon">📤</span>
+                        Export Chat History
+                    </button>
+                    <button type="button" id="clear-data" class="btn-danger">
+                        <span class="btn-icon">🗑️</span>
+                        Clear All Data
+                    </button>
+                    <button type="button" id="cleanup-data" class="btn-secondary">
+                        <span class="btn-icon">🧹</span>
+                        Cleanup Old Data
+                    </button>
+                </div>
+            </section>
+
+            <!-- Advanced Settings -->
+            <section class="settings-section">
+                <div class="section-header">
+                    <h2>⚙️ Advanced Settings</h2>
+                    <p>Advanced configuration options</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="session-duration">
+                        <strong>Session Duration</strong>
+                    </label>
+                    <div class="input-with-unit">
+                        <input type="number" id="session-duration" min="1" max="168" value="24">
+                        <span class="input-unit">hours</span>
+                    </div>
+                    <div class="form-help">
+                        How long to keep chat sessions active
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="debug-mode">
+                        <span class="checkbox-custom"></span>
+                        <div class="checkbox-content">
+                            <strong>Debug Mode</strong>
+                            <div class="form-help">Enable detailed logging and performance monitoring</div>
+                        </div>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Performance Monitoring -->
+            <section class="settings-section" id="performance-section" style="display: none;">
+                <div class="section-header">
+                    <h2>📊 Performance Monitoring</h2>
+                    <p>Monitor extension performance and diagnostics</p>
+                </div>
+
+                <div class="performance-stats" id="performance-stats">
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">API Calls (1h)</div>
+                            <div class="stat-value" id="api-calls-count">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Avg Response Time</div>
+                            <div class="stat-value" id="avg-response-time">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Memory Usage</div>
+                            <div class="stat-value" id="memory-usage">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Error Rate</div>
+                            <div class="stat-value" id="error-rate">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="performance-warnings" id="performance-warnings"></div>
+
+                <div class="form-actions">
+                    <button type="button" id="refresh-performance" class="btn-secondary">
+                        <span class="btn-icon">🔄</span>
+                        Refresh Stats
+                    </button>
+                    <button type="button" id="export-performance" class="btn-secondary">
+                        <span class="btn-icon">📊</span>
+                        Export Performance Data
+                    </button>
+                    <button type="button" id="clear-performance" class="btn-danger">
+                        <span class="btn-icon">🗑️</span>
+                        Clear Performance Data
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="settings-footer">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <span class="version">Version 0.7.0</span>
+                    <span class="divider">•</span>
+                    <a href="#" id="reset-settings">Reset to Defaults</a>
+                </div>
+                <div class="footer-actions">
+                    <button type="button" id="cancel-settings" class="btn-secondary">
+                        Cancel
+                    </button>
+                    <button type="button" id="save-settings" class="btn-primary">
+                        <span class="btn-icon">💾</span>
+                        Save Settings
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="options.js"></script>
+</body>
+
+</html>

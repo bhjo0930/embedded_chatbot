@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot Chrome Extension - 개발 가이드</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8fafc;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .nav {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            position: sticky;
+            top: 20px;
+            z-index: 100;
+        }
+
+        .nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav a {
+            color: #667eea;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .nav a:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .section {
+            background: white;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #667eea;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        h3 {
+            color: #4a5568;
+            font-size: 1.4rem;
+            margin: 1.5rem 0 1rem 0;
+        }
+
+        h4 {
+            color: #2d3748;
+            font-size: 1.2rem;
+            margin: 1rem 0 0.5rem 0;
+        }
+
+        .code-block {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .inline-code {
+            background: #e2e8f0;
+            color: #2d3748;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .file-tree {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            line-height: 1.4;
+        }
+
+        .highlight {
+            background: #fef5e7;
+            border-left: 4px solid #f6ad55;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warning {
+            background: #fed7d7;
+            border-left: 4px solid #f56565;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .info {
+            background: #e6fffa;
+            border-left: 4px solid #38b2ac;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+        }
+
+        th,
+        td {
+            border: 1px solid #e2e8f0;
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        th {
+            background: #f7fafc;
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin: 0.2rem;
+        }
+
+        .category-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .category-item {
+            background: #f7fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .toc {
+            background: #f7fafc;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .toc h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+
+        .toc ul {
+            list-style: none;
+            padding-left: 1rem;
+        }
+
+        .toc a {
+            color: #4a5568;
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .nav ul {
+                flex-direction: column;
+            }
+
+            .section {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 AI Chatbot Chrome Extension</h1>
+            <p class="subtitle">개발자를 위한 완전한 개발 가이드</p>
+        </header>
+
+        <nav class="nav">
+            <ul>
+                <li><a href="#overview">개요</a></li>
+                <li><a href="#architecture">아키텍처</a></li>
+                <li><a href="#setup">설치 및 설정</a></li>
+                <li><a href="#development">개발 가이드</a></li>
+                <li><a href="#api">API 참조</a></li>
+                <li><a href="#categories">카테고리 시스템</a></li>
+                <li><a href="#testing">테스트</a></li>
+                <li><a href="#deployment">배포</a></li>
+                <li><a href="#troubleshooting">문제 해결</a></li>
+            </ul>
+        </nav>
+
+        <div class="toc">
+            <h3>📋 목차</h3>
+            <ul>
+                <li><a href="#overview">1. 프로젝트 개요</a></li>
+                <li><a href="#architecture">2. 시스템 아키텍처</a></li>
+                <li><a href="#setup">3. 개발 환경 설정</a></li>
+                <li><a href="#development">4. 개발 가이드</a></li>
+                <li><a href="#api">5. API 참조</a></li>
+                <li><a href="#categories">6. 카테고리 시스템</a></li>
+                <li><a href="#testing">7. 테스트 가이드</a></li>
+                <li><a href="#deployment">8. 배포 가이드</a></li>
+                <li><a href="#troubleshooting">9. 문제 해결</a></li>
+            </ul>
+        </div>
+
+        <section id="overview" class="section">
+            <h2>🎯 1. 프로젝트 개요</h2>
+
+            <h3>프로젝트 소개</h3>
+            <p>AI Chatbot Chrome Extension은 n8n 워크플로우와 Ollama 로컬 인스턴스를 지원하는 듀얼 백엔드 AI 챗봇 확장 프로그램입니다.</p>
+
+            <h3>주요 기능</h3>
+            <ul>
+                <li><strong>듀얼 백엔드 지원</strong>: n8n webhook과 Ollama 로컬 인스턴스 선택 가능</li>
+                <li><strong>8개 전문 AI 에이전트</strong>: 카테고리별 특화된 AI 어시스턴트</li>
+                <li><strong>실시간 채팅 인터페이스</strong>: 현대적이고 반응형 채팅 UI</li>
+                <li><strong>스마트 라우팅</strong>: 페이지 타입에 따른 팝업/사이드바 자동 전환</li>
+                <li><strong>컨텍스트 메뉴 통합</strong>: 우클릭 메뉴를 통한 빠른 접근</li>
+            </ul>
+
+            <h3>기술 스택</h3>
+            <div class="category-list">
+                <div class="category-item">
+                    <h4>Frontend</h4>
+                    <span class="badge">HTML5</span>
+                    <span class="badge">CSS3</span>
+                    <span class="badge">JavaScript ES6+</span>
+                </div>
+                <div class="category-item">
+                    <h4>Chrome APIs</h4>
+                    <span class="badge">chrome.runtime</span>
+                    <span class="badge">chrome.storage</span>
+                    <span class="badge">chrome.contextMenus</span>
+                </div>
+                <div class="category-item">
+                    <h4>Backend</h4>
+                    <span class="badge">n8n Webhook</span>
+                    <span class="badge">Ollama API</span>
+                    <span class="badge">REST API</span>
+                </div>
+            </div>
+
+            <h3>버전 정보</h3>
+            <table>
+                <tr>
+                    <th>현재 버전</th>
+                    <td>1.0.0</td>
+                </tr>
+                <tr>
+                    <th>Manifest 버전</th>
+                    <td>3</td>
+                </tr>
+                <tr>
+                    <th>최소 Chrome 버전</th>
+                    <td>88</td>
+                </tr>
+                <tr>
+                    <th>지원 플랫폼</th>
+                    <td>Windows, macOS, Linux</td>
+                </tr>
+            </table>
+        </section>
+
+        <section id="architecture" class="section">
+            <h2>🏗️ 2. 시스템 아키텍처</h2>
+
+            <h3>전체 구조</h3>
+            <div class="file-tree">
+                ai-chatbot-extension/
+                ├── manifest.json # 확장 프로그램 매니페스트
+                ├── background/
+                │ └── background.js # 백그라운드 스크립트
+                ├── content/
+                │ └── content.js # 콘텐츠 스크립트
+                ├── popup/
+                │ ├── popup.html # 팝업 UI
+                │ ├── popup.js # 팝업 로직
+                │ └── popup.css # 팝업 스타일
+                ├── options/
+                │ ├── options.html # 설정 페이지
+                │ ├── options.js # 설정 로직
+                │ └── options.css # 설정 스타일
+                ├── lib/
+                │ ├── unified-api-client.js # 통합 API 클라이언트
+                │ └── ollama-client.js # Ollama 전용 클라이언트
+                ├── icons/ # 확장 프로그램 아이콘
+                ├── webhook-config.json # 웹훅 설정
+                └── package.json # 프로젝트 메타데이터
+            </div>
+
+            <h3>컴포넌트 간 통신</h3>
+            <div class="code-block">
+                ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+                │ Popup │◄──►│ Background │◄──►│ Content │
+                │ Script │ │ Script │ │ Script │
+                └─────────────┘ └─────────────┘ └─────────────┘
+                │ │ │
+                ▼ ▼ ▼
+                ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+                │ Chrome │ │ Unified │ │ Page │
+                │ Storage │ │ API Client │ │ Context │
+                └─────────────┘ └─────────────┘ └─────────────┘
+                │
+                ▼
+                ┌─────────────┐
+                │ Backend │
+                │ (n8n/Ollama)│
+                └─────────────┘
+            </div>
+
+            <h3>데이터 플로우</h3>
+            <ol>
+                <li><strong>사용자 입력</strong>: 팝업 또는 사이드바에서 메시지 입력</li>
+                <li><strong>메시지 처리</strong>: 백그라운드 스크립트가 메시지 수신</li>
+                <li><strong>API 호출</strong>: 통합 API 클라이언트를 통해 백엔드 호출</li>
+                <li><strong>응답 처리</strong>: AI 응답을 파싱하고 포맷팅</li>
+                <li><strong>UI 업데이트</strong>: 채팅 인터페이스에 응답 표시</li>
+                <li><strong>히스토리 저장</strong>: Chrome Storage에 대화 기록 저장</li>
+            </ol>
+        </section>
+
+        <section id="setup" class="section">
+            <h2>⚙️ 3. 개발 환경 설정</h2>
+
+            <h3>필수 요구사항</h3>
+            <ul>
+                <li>Chrome 브라우저 88 이상</li>
+                <li>Node.js 16 이상 (개발 도구용)</li>
+                <li>Git</li>
+                <li>텍스트 에디터 (VS Code 권장)</li>
+            </ul>
+
+            <h3>프로젝트 클론 및 설정</h3>
+            <div class="code-block">
+                # 프로젝트 클론
+                git clone https://github.com/your-repo/ai-chatbot-extension.git
+                cd ai-chatbot-extension
+
+                # 의존성 설치 (개발 도구용)
+                npm install
+
+                # 개발 서버 시작 (선택사항)
+                npm run dev
+            </div>
+
+            <h3>Chrome 확장 프로그램 로드</h3>
+            <ol>
+                <li>Chrome에서 <code>chrome://extensions/</code> 접속</li>
+                <li>우상단 "개발자 모드" 활성화</li>
+                <li>"압축해제된 확장 프로그램을 로드합니다" 클릭</li>
+                <li>프로젝트 폴더 선택</li>
+                <li>확장 프로그램이 로드되면 아이콘이 툴바에 표시됨</li>
+            </ol>
+
+            <div class="info">
+                <strong>💡 개발 팁:</strong> 코드 변경 후 확장 프로그램 페이지에서 새로고침 버튼을 클릭하여 변경사항을 적용하세요.
+            </div>
+
+            <h3>백엔드 설정</h3>
+
+            <h4>n8n 설정</h4>
+            <div class="code-block">
+                1. n8n 인스턴스 설치 및 실행
+                2. 웹훅 노드가 포함된 워크플로우 생성
+                3. 웹훅 URL을 확장 프로그램 설정에 입력
+                4. 테스트 연결로 동작 확인
+            </div>
+
+            <h4>Ollama 설정</h4>
+            <div class="code-block">
+                # Ollama 설치
+                curl -fsSL https://ollama.ai/install.sh | sh
+
+                # 모델 다운로드
+                ollama pull llama2
+                ollama pull codellama
+
+                # 서버 실행
+                ollama serve
+            </div>
+        </section>
+
+        <section id="development" class="section">
+            <h2>👨‍💻 4. 개발 가이드</h2>
+
+            <h3>코드 구조 이해</h3>
+
+            <h4>Manifest.json</h4>
+            <p>확장 프로그램의 메타데이터와 권한을 정의합니다.</p>
+            <div class="code-block">
+                {
+                "manifest_version": 3,
+                "name": "AI Chatbot Assistant",
+                "version": "1.0.0",
+                "permissions": [
+                "storage",
+                "activeTab",
+                "contextMenus"
+                ],
+                "host_permissions": [
+                "https://*/*",
+                "http://localhost/*"
+                ]
+                }
+            </div>
+
+            <h4>Background Script</h4>
+            <p>확장 프로그램의 핵심 로직을 처리합니다.</p>
+            <div class="code-block">
+                // 메시지 처리 예제
+                chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+                if (request.action === 'sendMessage') {
+                handleSendMessage(request.data)
+                .then(response => sendResponse({ success: true, data: response }))
+                .catch(error => sendResponse({ success: false, error: error.message }));
+                return true; // 비동기 응답을 위해 필요
+                }
+                });
+            </div>
+
+            <h4>Popup Script</h4>
+            <p>사용자 인터페이스와 상호작용을 관리합니다.</p>
+            <div class="code-block">
+                class ChatbotPopup {
+                constructor() {
+                this.selectedCategory = 'GENERAL';
+                this.init();
+                }
+
+                async handleSendMessage() {
+                const message = this.messageInput.value.trim();
+                if (!message) return;
+
+                // 백그라운드 스크립트로 메시지 전송
+                const response = await this.sendMessageToBackground(message, {
+                category: this.selectedCategory
+                });
+
+                // UI 업데이트
+                this.addMessage(response.data.message, 'bot');
+                }
+                }
+            </div>
+
+            <h3>새로운 기능 추가하기</h3>
+
+            <h4>1. 새로운 카테고리 추가</h4>
+            <div class="code-block">
+                // 1. webhook-config.json 업데이트
+                "categories": [
+                "GENERAL", "HR", "IT", "DATA",
+                "FINANCE", "MARKETING", "LEGAL", "SECURITY",
+                "NEW_CATEGORY" // 새 카테고리 추가
+                ]
+
+                // 2. popup.html에 버튼 추가
+                &lt;button class="category-btn" data-category="NEW_CATEGORY" data-icon="🆕"&gt;
+                &lt;span class="category-icon"&gt;🆕&lt;/span&gt;
+                &lt;span class="category-name"&gt;New Category&lt;/span&gt;
+                &lt;/button&gt;
+
+                // 3. popup.js에 카테고리 정보 추가
+                const categoryNames = {
+                // ... 기존 카테고리들
+                new_category: 'New Category Assistant'
+                };
+            </div>
+
+            <h4>2. 새로운 API 엔드포인트 추가</h4>
+            <div class="code-block">
+                // unified-api-client.js에 새 메서드 추가
+                async sendCustomRequest(data) {
+                const response = await fetch(this.settings.customEndpoint, {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+                });
+
+                return await response.json();
+                }
+            </div>
+
+            <h3>스타일링 가이드</h3>
+
+            <h4>CSS 변수 사용</h4>
+            <div class="code-block">
+                :root {
+                --primary-color: #667eea;
+                --secondary-color: #764ba2;
+                --success-color: #10b981;
+                --error-color: #ef4444;
+                --warning-color: #f59e0b;
+                --text-color: #1f2937;
+                --bg-color: #f8fafc;
+                }
+            </div>
+
+            <h4>반응형 디자인</h4>
+            <div class="code-block">
+                @media (max-width: 768px) {
+                .popup-container {
+                width: 100vw;
+                height: 100vh;
+                }
+
+                .category-options {
+                flex-direction: column;
+                }
+                }
+            </div>
+
+            <div class="warning">
+                <strong>⚠️ 주의사항:</strong> Chrome 확장 프로그램에서는 인라인 스타일과 eval() 사용이 제한됩니다. 모든 스타일은 외부 CSS 파일에 정의하세요.
+            </div>
+        </section>
+
+        <section id="api" class="section">
+            <h2>📡 5. API 참조</h2>
+
+            <h3>Chrome Extension API</h3>
+
+            <h4>메시지 전송</h4>
+            <div class="code-block">
+                // 백그라운드 스크립트로 메시지 전송
+                chrome.runtime.sendMessage({
+                action: 'sendMessage',
+                data: {
+                message: 'Hello AI',
+                category: 'GENERAL',
+                sessionId: 'session_123'
+                }
+                }, (response) => {
+                if (response.success) {
+                console.log('AI Response:', response.data.message);
+                }
+                });
+            </div>
+
+            <h4>설정 저장/로드</h4>
+            <div class="code-block">
+                // 설정 저장
+                await chrome.storage.local.set({
+                settings: {
+                backend: 'n8n',
+                webhookUrl: 'https://your-n8n.com/webhook/123',
+                timeout: 30
+                }
+                });
+
+                // 설정 로드
+                const result = await chrome.storage.local.get(['settings']);
+                const settings = result.settings || {};
+            </div>
+
+            <h3>Unified API Client</h3>
+
+            <h4>초기화</h4>
+            <div class="code-block">
+                const apiClient = new UnifiedApiClient();
+                await apiClient.initialize({
+                backend: 'n8n', // 또는 'ollama'
+                webhookUrl: 'https://your-webhook-url.com',
+                timeout: 30
+                });
+            </div>
+
+            <h4>메시지 전송</h4>
+            <div class="code-block">
+                const response = await apiClient.sendMessage('Hello AI', {
+                category: 'GENERAL',
+                sessionId: 'session_123'
+                });
+
+                console.log(response.message); // AI 응답
+            </div>
+
+            <h4>연결 테스트</h4>
+            <div class="code-block">
+                const status = await apiClient.testConnection();
+                if (status.connected) {
+                console.log('연결 성공');
+                } else {
+                console.error('연결 실패:', status.error);
+                }
+            </div>
+
+            <h3>n8n Webhook API</h3>
+
+            <h4>요청 형식</h4>
+            <div class="code-block">
+                POST /webhook/your-webhook-id
+                Content-Type: application/json
+
+                {
+                "data": {
+                "text": "사용자 메시지",
+                "category": "GENERAL"
+                },
+                "timestamp": "2025-01-01T00:00:00.000Z",
+                "sessionId": "session_123",
+                "userId": "chrome-extension-user",
+                "metadata": {
+                "source": "chrome-extension",
+                "version": "1.0.0",
+                "agentType": "GENERAL"
+                }
+                }
+            </div>
+
+            <h4>응답 형식</h4>
+            <div class="code-block">
+                {
+                "message": "AI 응답 메시지",
+                "success": true,
+                "timestamp": "2025-01-01T00:00:01.000Z"
+                }
+            </div>
+
+            <h3>Ollama API</h3>
+
+            <h4>모델 목록 조회</h4>
+            <div class="code-block">
+                GET http://localhost:11434/api/tags
+
+                {
+                "models": [
+                {
+                "name": "llama2:latest",
+                "size": 3825819519
+                }
+                ]
+                }
+            </div>
+
+            <h4>채팅 요청</h4>
+            <div class="code-block">
+                POST http://localhost:11434/api/chat
+                Content-Type: application/json
+
+                {
+                "model": "llama2",
+                "messages": [
+                {
+                "role": "user",
+                "content": "Hello AI"
+                }
+                ],
+                "stream": false
+                }
+            </div>
+        </section>
+
+        <section id="categories" class="section">
+            <h2>🏷️ 6. 카테고리 시스템</h2>
+
+            <h3>현재 지원 카테고리</h3>
+            <div class="category-list">
+                <div class="category-item">
+                    <h4>🤖 GENERAL</h4>
+                    <p>일반적인 질문과 대화를 처리하는 범용 AI 어시스턴트</p>
+                </div>
+                <div class="category-item">
+                    <h4>👥 HR</h4>
+                    <p>인사 관련 정책, 복리후생, HR 업무를 지원하는 전문 어시스턴트</p>
+                </div>
+                <div class="category-item">
+                    <h4>💻 IT</h4>
+                    <p>기술 지원, 시스템 문제 해결을 담당하는 IT 전문 어시스턴트</p>
+                </div>
+                <div class="category-item">
+                    <h4>📊 DATA</h4>
+                    <p>데이터 분석, 인사이트 도출을 지원하는 데이터 전문가</p>
+                </div>
+                <div class="category-item">
+                    <h4>💰 FINANCE</h4>
+                    <p>재무 분석, 회계 업무를 지원하는 금융 전문 어시스턴트</p>
+                </div>
+                <div class="category-item">
+                    <h4>📢 MARKETING</h4>
+                    <p>마케팅 전략, 캠페인 기획을 지원하는 마케팅 전문가</p>
+                </div>
+                <div class="category-item">
+                    <h4>⚖️ LEGAL</h4>
+                    <p>법률 자문, 컴플라이언스를 지원하는 법무 전문 어시스턴트</p>
+                </div>
+                <div class="category-item">
+                    <h4>🔒 SECURITY</h4>
+                    <p>보안 정책, 위험 관리를 담당하는 보안 전문 어시스턴트</p>
+                </div>
+            </div>
+
+            <h3>카테고리 수정 방법</h3>
+
+            <h4>1. 카테고리 이름 변경</h4>
+            <p>다음 파일들에서 카테고리 이름을 일관성 있게 수정해야 합니다:</p>
+            <ul>
+                <li><code>webhook-config.json</code> - 테스트 설정</li>
+                <li><code>package.json</code> - 프로젝트 메타데이터</li>
+                <li><code>popup/popup.js</code> - UI 로직</li>
+                <li><code>lib/unified-api-client.js</code> - API 클라이언트</li>
+                <li>문서 파일들 (README.md, API_REFERENCE.md 등)</li>
+            </ul>
+
+            <h4>2. 새 카테고리 추가</h4>
+            <div class="code-block">
+                // 1. webhook-config.json 업데이트
+                "categories": [
+                "GENERAL", "HR", "IT", "DATA",
+                "FINANCE", "MARKETING", "LEGAL", "SECURITY",
+                "NEW_CATEGORY"
+                ]
+
+                // 2. popup.html에 버튼 추가
+                &lt;button class="category-btn" data-category="NEW_CATEGORY" data-icon="🆕"&gt;
+                &lt;span class="category-icon"&gt;🆕&lt;/span&gt;
+                &lt;span class="category-name"&gt;New Category&lt;/span&gt;
+                &lt;/button&gt;
+
+                // 3. popup.js에 카테고리 정보 추가
+                const categoryNames = {
+                // ... 기존 카테고리들
+                new_category: 'New Category Assistant'
+                };
+
+                const categoryMessages = {
+                // ... 기존 메시지들
+                new_category: '🆕 Hi! I\'m your New Category assistant. How can I help?'
+                };
+            </div>
+
+            <h4>3. 카테고리 삭제</h4>
+            <div class="warning">
+                <strong>⚠️ 주의:</strong> 카테고리를 삭제할 때는 해당 카테고리를 사용하는 모든 코드와 설정을 함께 제거해야 합니다.
+            </div>
+
+            <h3>카테고리별 프롬프트 커스터마이징</h3>
+            <p>n8n 워크플로우에서 카테고리별로 다른 프롬프트를 사용하여 전문화된 응답을 생성할 수 있습니다.</p>
+            <div class="code-block">
+                // n8n 워크플로우 예제
+                if (category === 'HR') {
+                systemPrompt = "You are an HR specialist. Focus on employee relations, policies, and benefits.";
+                } else if (category === 'IT') {
+                systemPrompt = "You are an IT support specialist. Help with technical issues and solutions.";
+                }
+            </div>
+        </section>
+
+        <section id="testing" class="section">
+            <h2>🧪 7. 테스트 가이드</h2>
+
+            <h3>수동 테스트</h3>
+
+            <h4>기본 기능 테스트</h4>
+            <ol>
+                <li>확장 프로그램 아이콘 클릭하여 팝업 열기</li>
+                <li>각 카테고리 선택하여 UI 변경 확인</li>
+                <li>메시지 입력 및 전송 테스트</li>
+                <li>AI 응답 수신 및 표시 확인</li>
+                <li>채팅 히스토리 저장/로드 테스트</li>
+            </ol>
+
+            <h4>설정 페이지 테스트</h4>
+            <ol>
+                <li>우클릭 메뉴에서 "Options" 선택</li>
+                <li>백엔드 전환 (n8n ↔ Ollama) 테스트</li>
+                <li>연결 테스트 기능 확인</li>
+                <li>설정 저장/로드 테스트</li>
+            </ol>
+
+            <h3>자동화된 테스트</h3>
+
+            <h4>웹훅 테스트 스크립트</h4>
+            <div class="code-block">
+                // test-webhook.js 실행
+                node test-webhook.js
+
+                // 테스트 결과 확인
+                ✅ Connection Test: Passed
+                ✅ Response Format Test: Passed
+                ✅ All Category Tests: Passed
+                ✅ Long Message Test: Passed
+                ✅ Error Handling Test: Passed
+            </div>
+
+            <h4>단위 테스트 작성</h4>
+            <div class="code-block">
+                // 예제: API 클라이언트 테스트
+                describe('UnifiedApiClient', () => {
+                let client;
+
+                beforeEach(() => {
+                client = new UnifiedApiClient();
+                });
+
+                test('should initialize with n8n backend', async () => {
+                await client.initialize({
+                backend: 'n8n',
+                webhookUrl: 'https://test.com/webhook'
+                });
+
+                expect(client.getCurrentBackend()).toBe('n8n');
+                });
+
+                test('should send message successfully', async () => {
+                // 테스트 구현
+                });
+                });
+            </div>
+
+            <h3>성능 테스트</h3>
+
+            <h4>응답 시간 측정</h4>
+            <div class="code-block">
+                // 성능 측정 코드 예제
+                const startTime = performance.now();
+                const response = await apiClient.sendMessage('Test message');
+                const endTime = performance.now();
+
+                console.log(`응답 시간: ${endTime - startTime}ms`);
+            </div>
+
+            <h4>메모리 사용량 모니터링</h4>
+            <div class="code-block">
+                // Chrome DevTools에서 확인
+                1. F12 개발자 도구 열기
+                2. Performance 탭 선택
+                3. 메모리 사용량 프로파일링 실행
+                4. 메모리 누수 여부 확인
+            </div>
+
+            <div class="info">
+                <strong>💡 테스트 팁:</strong> Chrome 확장 프로그램은 chrome://extensions/ 페이지에서 "검사" 버튼을 클릭하여 디버깅할 수 있습니다.
+            </div>
+        </section>
+
+        <section id="deployment" class="section">
+            <h2>🚀 8. 배포 가이드</h2>
+
+            <h3>Chrome Web Store 배포</h3>
+
+            <h4>1. 배포 준비</h4>
+            <div class="code-block">
+                # 1. 프로덕션 빌드 생성
+                npm run build
+
+                # 2. 확장 프로그램 패키징
+                zip -r ai-chatbot-extension.zip . -x "node_modules/*" "*.git*" "*.md"
+
+                # 3. 매니페스트 검증
+                chrome://extensions/ 에서 "압축해제된 확장 프로그램을 로드" 후 테스트
+            </div>
+
+            <h4>2. Chrome Web Store 등록</h4>
+            <ol>
+                <li><a href="https://chrome.google.com/webstore/devconsole" target="_blank">Chrome Web Store Developer
+                        Dashboard</a> 접속</li>
+                <li>개발자 계정 등록 ($5 일회성 수수료)</li>
+                <li>"새 항목" 클릭하여 확장 프로그램 업로드</li>
+                <li>스토어 등록 정보 작성</li>
+                <li>검토 제출</li>
+            </ol>
+
+            <h4>3. 스토어 등록 정보</h4>
+            <table>
+                <tr>
+                    <th>항목</th>
+                    <th>내용</th>
+                </tr>
+                <tr>
+                    <td>이름</td>
+                    <td>AI Chatbot Assistant</td>
+                </tr>
+                <tr>
+                    <td>설명</td>
+                    <td>Dual backend AI chatbot with n8n and Ollama support</td>
+                </tr>
+                <tr>
+                    <td>카테고리</td>
+                    <td>생산성</td>
+                </tr>
+                <tr>
+                    <td>언어</td>
+                    <td>한국어, 영어</td>
+                </tr>
+            </table>
+
+            <h3>엔터프라이즈 배포</h3>
+
+            <h4>1. 사내 배포</h4>
+            <div class="code-block">
+                # 1. 확장 프로그램 패키징
+                chrome --pack-extension=/path/to/extension --pack-extension-key=/path/to/key.pem
+
+                # 2. .crx 파일 생성 확인
+                ls -la extension.crx
+
+                # 3. 사내 서버에 호스팅
+                # 4. 그룹 정책으로 자동 설치 설정
+            </div>
+
+            <h4>2. 그룹 정책 설정</h4>
+            <div class="code-block">
+                // Windows 그룹 정책 예제
+                {
+                "ExtensionInstallForcelist": [
+                "your-extension-id;https://your-server.com/extension.crx"
+                ],
+                "ExtensionSettings": {
+                "your-extension-id": {
+                "installation_mode": "force_installed",
+                "update_url": "https://your-server.com/updates.xml"
+                }
+                }
+                }
+            </div>
+
+            <h3>업데이트 관리</h3>
+
+            <h4>버전 관리</h4>
+            <div class="code-block">
+                // manifest.json 버전 업데이트
+                {
+                "version": "1.0.1", // 새 버전
+                "version_name": "1.0.1 - Bug fixes"
+                }
+
+                // package.json 버전 동기화
+                {
+                "version": "1.0.1"
+                }
+            </div>
+
+            <h4>자동 업데이트</h4>
+            <p>Chrome Web Store에 배포된 확장 프로그램은 자동으로 업데이트됩니다. 사용자는 chrome://extensions/ 에서 수동으로 업데이트를 확인할 수도 있습니다.</p>
+
+            <div class="highlight">
+                <strong>📝 배포 체크리스트:</strong>
+                <ul>
+                    <li>모든 기능 테스트 완료</li>
+                    <li>매니페스트 권한 최소화</li>
+                    <li>아이콘 및 스크린샷 준비</li>
+                    <li>개인정보 처리방침 작성</li>
+                    <li>지원 연락처 정보 제공</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="troubleshooting" class="section">
+            <h2>🔧 9. 문제 해결</h2>
+
+            <h3>일반적인 문제들</h3>
+
+            <h4>1. 확장 프로그램이 로드되지 않음</h4>
+            <div class="warning">
+                <strong>증상:</strong> Chrome에서 확장 프로그램을 로드할 때 오류 발생
+            </div>
+            <div class="code-block">
+                해결 방법:
+                1. manifest.json 문법 오류 확인
+                2. 필수 파일들이 모두 존재하는지 확인
+                3. 권한 설정이 올바른지 확인
+                4. Chrome 개발자 도구에서 오류 메시지 확인
+            </div>
+
+            <h4>2. API 연결 실패</h4>
+            <div class="warning">
+                <strong>증상:</strong> n8n 또는 Ollama 연결이 실패함
+            </div>
+            <div class="code-block">
+                해결 방법:
+                1. 네트워크 연결 상태 확인
+                2. 웹훅 URL 또는 Ollama URL 정확성 확인
+                3. CORS 설정 확인 (n8n의 경우)
+                4. 방화벽 설정 확인
+                5. SSL 인증서 문제 확인
+            </div>
+
+            <h4>3. 메시지 전송 실패</h4>
+            <div class="warning">
+                <strong>증상:</strong> 메시지를 보내도 응답이 없거나 오류 발생
+            </div>
+            <div class="code-block">
+                해결 방법:
+                1. 백엔드 서버 상태 확인
+                2. 요청 페이로드 형식 확인
+                3. 타임아웃 설정 조정
+                4. 에러 로그 확인
+                5. 네트워크 탭에서 요청/응답 분석
+            </div>
+
+            <h3>디버깅 도구</h3>
+
+            <h4>Chrome 개발자 도구</h4>
+            <div class="code-block">
+                # 백그라운드 스크립트 디버깅
+                1. chrome://extensions/ 접속
+                2. 확장 프로그램에서 "검사" 클릭
+                3. Console 탭에서 로그 확인
+
+                # 팝업 디버깅
+                1. 확장 프로그램 아이콘 우클릭
+                2. "팝업 검사" 선택
+                3. Elements, Console 탭 활용
+
+                # 콘텐츠 스크립트 디버깅
+                1. 웹페이지에서 F12 개발자 도구 열기
+                2. Sources 탭에서 확장 프로그램 스크립트 찾기
+                3. 브레이크포인트 설정하여 디버깅
+            </div>
+
+            <h4>로깅 시스템</h4>
+            <div class="code-block">
+                // 개발 모드에서만 로그 출력
+                const DEBUG = true;
+
+                function debugLog(message, data = null) {
+                if (DEBUG) {
+                console.log(`[AI Chatbot] ${message}`, data);
+                }
+                }
+
+                // 사용 예제
+                debugLog('Message sent', { message, category });
+                debugLog('API Response received', response);
+            </div>
+
+            <h3>성능 최적화</h3>
+
+            <h4>메모리 사용량 최적화</h4>
+            <div class="code-block">
+                // 1. 이벤트 리스너 정리
+                window.addEventListener('beforeunload', () => {
+                // 리스너 제거
+                element.removeEventListener('click', handler);
+                });
+
+                // 2. 대용량 데이터 정리
+                const cleanupOldMessages = () => {
+                const cutoffTime = Date.now() - (7 * 24 * 60 * 60 * 1000); // 7일
+                chatHistory = chatHistory.filter(msg => msg.timestamp > cutoffTime);
+                };
+
+                // 3. DOM 요소 정리
+                const removeOldMessages = () => {
+                const messages = document.querySelectorAll('.message-bubble');
+                if (messages.length > 100) {
+                // 오래된 메시지 제거
+                for (let i = 0; i < 50; i++) { messages[i].remove(); } } }; </div>
+
+                    <h4>네트워크 최적화</h4>
+                    <div class="code-block">
+                        // 1. 요청 디바운싱
+                        const debouncedSend = debounce(sendMessage, 300);
+
+                        // 2. 요청 캐싱
+                        const responseCache = new Map();
+                        const getCachedResponse = (key) => {
+                        const cached = responseCache.get(key);
+                        if (cached && Date.now() - cached.timestamp < 300000) { // 5분 return cached.data; } return null;
+                            }; // 3. 압축 사용 const compressData=(data)=> {
+                            return JSON.stringify(data); // 실제로는 압축 라이브러리 사용
+                            };
+                    </div>
+
+                    <h3>보안 고려사항</h3>
+
+                    <h4>XSS 방지</h4>
+                    <div class="code-block">
+                        // 사용자 입력 새니타이징
+                        const sanitizeInput = (input) => {
+                        const div = document.createElement('div');
+                        div.textContent = input;
+                        return div.innerHTML;
+                        };
+
+                        // innerHTML 대신 textContent 사용
+                        element.textContent = userInput; // 안전
+                        // element.innerHTML = userInput; // 위험
+                    </div>
+
+                    <h4>권한 최소화</h4>
+                    <div class="code-block">
+                        // manifest.json에서 필요한 권한만 요청
+                        {
+                        "permissions": [
+                        "storage", // 필수: 설정 저장용
+                        "activeTab" // 필수: 현재 탭 접근용
+                        // "tabs" // 불필요: 모든 탭 접근 권한
+                        ],
+                        "host_permissions": [
+                        "https://your-n8n-domain.com/*" // 특정 도메인만 허용
+                        // "https://*/*" // 모든 사이트 접근은 피하기
+                        ]
+                        }
+                    </div>
+
+                    <div class="info">
+                        <strong>💡 문제 해결 팁:</strong> 문제가 발생하면 먼저 Chrome 개발자 도구의 Console 탭을 확인하여 오류 메시지를 파악하세요. 대부분의 문제는
+                        여기서 원인을 찾을 수 있습니다.
+                    </div>
+
+                    <h3>지원 및 커뮤니티</h3>
+                    <ul>
+                        <li><strong>GitHub Issues:</strong> 버그 리포트 및 기능 요청</li>
+                        <li><strong>Chrome Extension 문서:</strong> <a
+                                href="https://developer.chrome.com/docs/extensions/"
+                                target="_blank">developer.chrome.com/docs/extensions/</a></li>
+                        <li><strong>n8n 커뮤니티:</strong> <a href="https://community.n8n.io/"
+                                target="_blank">community.n8n.io</a></li>
+                        <li><strong>Ollama 문서:</strong> <a href="https://ollama.ai/docs"
+                                target="_blank">ollama.ai/docs</a></li>
+                    </ul>
+        </section>
+
+        <footer
+            style="text-align: center; padding: 2rem; color: #64748b; border-top: 1px solid #e2e8f0; margin-top: 2rem;">
+            <p>© 2025 AI Chatbot Chrome Extension. 이 문서는 개발자를 위한 완전한 가이드입니다.</p>
+            <p>최종 업데이트: 2025년 1월</p>
+        </footer>
+    </div>
+
+    <script>
+        // 부드러운 스크롤 효과
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 코드 블록 복사 기능
+        document.querySelectorAll('.code-block').forEach(block => {
+            const copyBtn = document.createElement('button');
+            copyBtn.textContent = '📋 복사';
+            copyBtn.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background: #4a5568;
+                color: white;
+                border: none;
+                padding: 5px 10px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+            `;
+
+            block.style.position = 'relative';
+            block.appendChild(copyBtn);
+
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(block.textContent.replace('📋 복사', '').trim());
+                copyBtn.textContent = '✅ 복사됨';
+                setTimeout(() => {
+                    copyBtn.textContent = '📋 복사';
+                }, 2000);
+            });
+        });
+
+        // 목차 하이라이트
+        const sections = document.querySelectorAll('.section');
+        const navLinks = document.querySelectorAll('.nav a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (scrollY >= sectionTop - 200) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // 활성 링크 스타일
+        const style = document.createElement('style');
+        style.textContent = `
+            .nav a.active {
+                background: #667eea !important;
+                color: white !important;
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+
+</html>

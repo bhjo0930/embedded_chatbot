@@ -1,0 +1,79 @@
+{
+  "name": "ai-chatbot-chrome-extension",
+  "version": "0.7.0",
+  "description": "A powerful Chrome extension that integrates AI chatbot functionality with n8n webhooks and Ollama local models",
+  "main": "background/background.js",
+  "scripts": {
+    "test": "node test-webhook.js",
+    "build": "echo 'Building extension...' && echo 'Extension ready for Chrome Web Store'",
+    "dev": "echo 'Development mode - Load unpacked extension in Chrome'",
+    "lint": "echo 'Linting JavaScript files...'",
+    "validate": "echo 'Validating manifest and files...'"
+  },
+  "keywords": [
+    "chrome-extension",
+    "ai",
+    "chatbot",
+    "n8n",
+    "ollama",
+    "webhook",
+    "automation",
+    "assistant"
+  ],
+  "author": "AI Chatbot Extension Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/ai-chatbot-chrome-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/ai-chatbot-chrome-extension/issues"
+  },
+  "homepage": "https://github.com/your-username/ai-chatbot-chrome-extension#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "devDependencies": {},
+  "dependencies": {},
+  "manifest": {
+    "version": 3,
+    "permissions": [
+      "storage",
+      "activeTab"
+    ],
+    "host_permissions": [
+      "*://*/*"
+    ]
+  },
+  "features": {
+    "backends": [
+      "n8n webhook",
+      "Ollama local"
+    ],
+    "ai_categories": [
+      "GENERAL",
+      "HR",
+      "IT",
+      "DATA",
+      "FINANCE",
+      "MARKETING",
+      "LEGAL",
+      "SECURITY"
+    ],
+    "themes": [
+      "Light",
+      "Dark",
+      "Auto"
+    ],
+    "data_management": [
+      "Chat history",
+      "Export/Import",
+      "Auto cleanup"
+    ],
+    "performance": [
+      "Debug mode",
+      "Performance monitoring",
+      "Error tracking"
+    ]
+  }
+}
