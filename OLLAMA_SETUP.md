@@ -56,9 +56,39 @@ curl http://localhost:11434/api/tags
 
 ## 📦 모델 다운로드
 
-### 권장 모델들
+### 최신 및 권장 모델 (2025년 8월 기준)
 
-#### 1. Llama 3 (추천)
+Ollama 라이브러리는 계속해서 업데이트됩니다. 다음은 현재 인기 있고 성능이 검증된 모델들입니다.
+
+#### 1. Qwen3 (최신, 다용도)
+Alibaba의 최신 대규모 언어 모델 시리즈로, 다양한 크기의 모델을 제공하여 대부분의 작업에 적합합니다.
+```bash
+# Qwen3 8B 모델 (범용 추천)
+ollama pull qwen3:8b
+
+# Qwen3 32B 모델 (고성능)
+ollama pull qwen3:32b
+
+# Qwen3 1.7B 모델 (경량)
+ollama pull qwen3:1.7b
+```
+
+#### 2. Mistral-Nemo (고급, 긴 컨텍스트)
+Mistral AI와 NVIDIA가 협력하여 만든 12B 모델로, 128k의 긴 컨텍스트 길이를 지원하여 복잡한 문서 분석이나 긴 대화에 유리합니다.
+```bash
+# Mistral-Nemo 12B 모델
+ollama pull mistral-nemo
+```
+
+#### 3. GPT-OSS (강력한 추론 및 에이전트)
+OpenAI의 오픈 웨이트 모델로, 복잡한 문제 해결, 코드 생성, 자동화된 에이전트 작업에 뛰어난 성능을 보입니다.
+```bash
+# GPT-OSS 20B 모델
+ollama pull gpt-oss:20b
+```
+
+#### 4. Llama 3 (검증된 고품질)
+Meta의 검증된 고품질 응답 모델로, 여전히 많은 사용자들이 선호하는 강력한 모델입니다.
 ```bash
 # Llama 3 8B 모델 (약 4.7GB)
 ollama pull llama3
@@ -67,31 +97,11 @@ ollama pull llama3
 ollama pull llama3:70b
 ```
 
-#### 2. Mistral (빠른 응답)
+#### 5. Qwen3-Coder (코딩 특화)
+Alibaba의 코딩 및 에이전트 작업에 최적화된 모델로, 개발자에게 강력한 지원을 제공합니다.
 ```bash
-# Mistral 7B 모델 (약 4.1GB)
-ollama pull mistral
-
-# Mistral Instruct 모델
-ollama pull mistral:instruct
-```
-
-#### 3. Code Llama (코딩 특화)
-```bash
-# Code Llama 7B 모델 (약 3.8GB)
-ollama pull codellama
-
-# Code Llama 13B 모델 (약 7.3GB)
-ollama pull codellama:13b
-```
-
-#### 4. Gemma (Google)
-```bash
-# Gemma 7B 모델 (약 5.2GB)
-ollama pull gemma:7b
-
-# Gemma 2B 모델 (약 1.7GB) - 저사양 시스템용
-ollama pull gemma:2b
+# Qwen3-Coder 30B 모델
+ollama pull qwen3-coder
 ```
 
 ### 모델 목록 확인
@@ -99,14 +109,14 @@ ollama pull gemma:2b
 # 설치된 모델 목록 보기
 ollama list
 
-# 모델 정보 확인
-ollama show llama3
+# 모델 정보 확인 (예: qwen3)
+ollama show qwen3
 ```
 
 ### 모델 테스트
 ```bash
 # 모델과 직접 대화 테스트
-ollama run llama3
+ollama run qwen3:8b
 ```
 
 ## ⚙️ 확장 프로그램 설정
@@ -132,23 +142,23 @@ ollama run llama3
 ## 🎯 카테고리별 최적 설정
 
 ### HR Assistant
-- **모델**: `llama3` 또는 `mistral:instruct`
+- **모델**: `qwen3:8b` 또는 `llama3`
 - **Temperature**: 0.3-0.5 (일관된 정책 답변)
 
 ### IT Support
-- **모델**: `codellama` 또는 `llama3`
+- **모델**: `qwen3-coder` 또는 `gpt-oss:20b`
 - **Temperature**: 0.2-0.4 (정확한 기술 정보)
 
 ### Data Analyst
-- **모델**: `llama3` 또는 `codellama:13b`
+- **모델**: `mistral-nemo` 또는 `llama3`
 - **Temperature**: 0.3-0.6 (분석적 사고)
 
 ### Marketing Specialist
-- **모델**: `llama3` 또는 `mistral`
+- **모델**: `qwen3:8b` 또는 `mistral-nemo`
 - **Temperature**: 0.7-1.0 (창의적 아이디어)
 
 ### Legal Advisor
-- **모델**: `llama3:70b` (가능한 경우) 또는 `llama3`
+- **모델**: `llama3:70b` (가능한 경우) 또는 `gpt-oss:20b`
 - **Temperature**: 0.1-0.3 (정확한 법적 정보)
 
 ## 🔧 고급 설정
@@ -188,17 +198,17 @@ ollama serve
 ### 모델 로딩 실패
 ```bash
 # 모델 재다운로드
-ollama pull llama3
+ollama pull qwen3:8b
 
 # 손상된 모델 제거 후 재설치
-ollama rm llama3
-ollama pull llama3
+ollama rm qwen3:8b
+ollama pull qwen3:8b
 ```
 
 ### 메모리 부족
 ```bash
 # 더 작은 모델 사용
-ollama pull gemma:2b
+ollama pull qwen3:1.7b
 
 # 또는 quantized 모델 사용
 ollama pull llama3:8b-instruct-q4_0
@@ -231,15 +241,17 @@ ollama serve
 - 신뢰할 수 있는 네트워크에서만 사용
 - 필요시 VPN 또는 SSH 터널 사용 권장
 
-## 📊 성능 비교
+## 📊 성능 비교 (추정치)
 
-| 모델 | 크기 | RAM 요구사항 | 속도 | 품질 | 용도 |
-|------|------|-------------|------|------|------|
-| gemma:2b | 1.7GB | 4GB | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | 빠른 응답 |
-| mistral | 4.1GB | 8GB | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 균형잡힌 성능 |
-| llama3 | 4.7GB | 8GB | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 고품질 응답 |
-| codellama | 3.8GB | 8GB | ⭐⭐⭐ | ⭐⭐⭐⭐ | 코딩 특화 |
-| llama3:70b | 40GB | 64GB | ⭐ | ⭐⭐⭐⭐⭐ | 최고 품질 |
+| 모델 | 크기 (추정) | RAM 요구사항 (추정) | 속도 | 품질 | 주요 용도 |
+|---|---|---|---|---|---|
+| qwen3:1.7b | ~1.7GB | 4GB | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | 빠른 응답, 경량 작업 |
+| llama3:8b | 4.7GB | 8GB | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | 고품질 범용 응답 |
+| qwen3:8b | ~4.5GB | 8GB | ⭐⭐⭐⭐ | ⭐⭐⭐⭐ | 최신 기술, 다용도 |
+| mistral-nemo | ~7GB | 16GB | ⭐⭐⭐ | ⭐⭐⭐⭐ | 긴 컨텍스트, 분석 |
+| gpt-oss:20b | ~11GB | 24GB | ⭐⭐ | ⭐⭐⭐⭐⭐ | 강력한 추론, 에이전트 |
+| qwen3-coder:30b| ~17GB | 32GB | ⭐⭐ | ⭐⭐⭐⭐ | 코딩, 개발 지원 |
+| llama3:70b | 40GB | 64GB | ⭐ | ⭐⭐⭐⭐⭐ | 최고 품질, 전문가용 |
 
 ## 🔄 업데이트 및 유지보수
 

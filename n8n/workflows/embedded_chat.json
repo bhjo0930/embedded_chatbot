@@ -1,0 +1,699 @@
+{
+  "name": "embedded_chat",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        192
+      ],
+      "id": "ce3308d2-256d-4252-95ac-61daa456a216",
+      "name": "Webhook",
+      "webhookId": "70b9ce8c-b88c-4ef9-8351-15929e540bf5"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {
+          "systemMessage": "You are an AI agent that is only allowed to answer using tools.  \nNever generate an answer from your own knowledge.  \nYou must always choose and call one or more tools provided to you.  \nIf no relevant information is returned by the tools, say \"No result found from tools.\"\n\nExamples:\nUser: What is the document about gold policy?\n→ Use 'Qdrant_Vector_Store' to vector search and return the result."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        192
+      ],
+      "id": "da232ce1-ddf4-4ddc-bea8-dd2aee498349",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        656,
+        192
+      ],
+      "id": "b3507efc-c04b-4089-8808-9dd2dd124f63",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        -16
+      ],
+      "id": "f6e95aa5-b121-4270-89ba-80b44dfae823",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -752,
+        384
+      ],
+      "id": "40de6953-ad8d-4ac6-b381-c964d76fa4d4",
+      "name": "When chat message received",
+      "webhookId": "2848528a-08f8-422f-9e14-3f0541330adf"
+    },
+    {
+      "parameters": {
+        "model": "bge-m3:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        176,
+        576
+      ],
+      "id": "9ef83005-508e-4949-91f5-6a7f0aaa3bb7",
+      "name": "Embeddings Ollama",
+      "credentials": {
+        "ollamaApi": {
+          "id": "ZCctGQOtnUtM7mNF",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "={{ $('On form submission').item.json.category }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        144,
+        736
+      ],
+      "id": "1af93268-728f-4334-85ce-93a1c8524377",
+      "name": "Qdrant Vector Store1",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ekgIRkPJpq0fm61v",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "bge-m3:latest"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOllama",
+      "typeVersion": 1,
+      "position": [
+        112,
+        912
+      ],
+      "id": "81e74a5d-e856-4284-a084-b47fc09d0e5a",
+      "name": "Embeddings Ollama1",
+      "credentials": {
+        "ollamaApi": {
+          "id": "ZCctGQOtnUtM7mNF",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "File Upload",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Filename",
+              "fieldType": "file",
+              "multipleFiles": false,
+              "acceptFileTypes": ".pdf, .xls, .xlsx, .doc, .docx"
+            },
+            {
+              "fieldLabel": "category",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "HR"
+                  },
+                  {
+                    "option": "IT"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        -288,
+        736
+      ],
+      "id": "6dd82185-0b99-4682-9a23-72f9c4a6d522",
+      "name": "On form submission",
+      "webhookId": "90b4874c-ddd9-4f38-9ddb-d2f54637bba1"
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "textSplittingMode": "custom",
+        "options": {
+          "splitPages": false,
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "category",
+                "value": "={{ $json.category }}"
+              },
+              {
+                "name": "filename",
+                "value": "={{ $json.Filename.filename }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        272,
+        912
+      ],
+      "id": "48479f6b-d544-4daa-8fdb-cba1521f0987",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {
+        "chunkSize": 2000,
+        "chunkOverlap": 200
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterTokenSplitter",
+      "typeVersion": 1,
+      "position": [
+        240,
+        1072
+      ],
+      "id": "1ca17d4b-8674-4f13-afe1-50fc9e2f1585",
+      "name": "Token Splitter"
+    },
+    {
+      "parameters": {
+        "model": "qwen3:4b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        400
+      ],
+      "id": "04112ea5-ee54-43d3-8daa-2b24624fdd84",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "ZCctGQOtnUtM7mNF",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this knowledge base to answer questions from the user",
+        "qdrantCollection": {
+          "__rl": true,
+          "value": "={{ $('web_hook_field_conversion').item.json.category }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        400
+      ],
+      "id": "d5c6eb4d-7642-41b6-97b8-58583b9a2004",
+      "name": "Qdrant_Vector_Store",
+      "credentials": {
+        "qdrantApi": {
+          "id": "ekgIRkPJpq0fm61v",
+          "name": "QdrantApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3d41cdd6-3912-44fd-96d6-dec3dc89bc7d",
+              "name": "message",
+              "value": "={{ $json.body.data.text }}",
+              "type": "string"
+            },
+            {
+              "id": "13183bf3-52e2-4546-9c72-ec4ad297b769",
+              "name": "category",
+              "value": "={{ $json.body.data.category.toUpperCase() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -528,
+        192
+      ],
+      "id": "44e4b100-ae88-4ce4-b40f-bddc7646c733",
+      "name": "web_hook_field_conversion"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3d41cdd6-3912-44fd-96d6-dec3dc89bc7d",
+              "name": "message",
+              "value": "={{ $json.chatInput }}",
+              "type": "string"
+            },
+            {
+              "id": "de3b9efb-af9d-4ed4-afdd-00e6e71268aa",
+              "name": "category",
+              "value": "HR",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -528,
+        384
+      ],
+      "id": "fac2b6a1-7cbf-402d-9a9c-51e5a2118bed",
+      "name": "chat_field_conversion"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Webhook').item.json.body.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        400
+      ],
+      "id": "a8a947d9-5f3c-4a44-82e2-f63857203765",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "962ad766-3684-4cba-9b66-4634d23c1555",
+              "name": "output",
+              "value": "={{ $json.response }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        192
+      ],
+      "id": "6f1cf743-a758-4d90-9078-deed5c8cb422",
+      "name": "응답외 제거"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n Code Node에서 사용할 JavaScript 코드\n\n// 입력 데이터 가져오기\nconst inputData = $input.all();\n\nconst processedResults = inputData.map((item, index) => {\n  const output = item.json.output;\n  \n  // think 태그와 실제 답변을 분리하는 함수\n  function parseAIResponse(text) {\n    // think 태그 패턴 매칭 (대소문자 구분 없음)\n    const thinkPattern = /<think>([\\s\\S]*?)<\\/think>/i;\n    const thinkMatch = text.match(thinkPattern);\n    \n    let thinkContent = '';\n    let actualResponse = text;\n    \n    if (thinkMatch) {\n      // think 내용 추출\n      thinkContent = thinkMatch[1].trim();\n      \n      // think 태그 전체를 제거하여 실제 답변만 남김\n      actualResponse = text.replace(thinkPattern, '').trim();\n    }\n    \n    return {\n      think: thinkContent,\n      response: actualResponse,\n      hasThink: !!thinkMatch\n    };\n  }\n  \n  // AI 응답 파싱\n  const parsed = parseAIResponse(output);\n  \n  return {\n    json: {\n      originalOutput: output,\n      think: parsed.think,\n      response: parsed.response,\n      hasThink: parsed.hasThink,\n      // 추가 메타데이터\n      thinkLength: parsed.think.length,\n      responseLength: parsed.response.length\n    }\n  };\n});\n\nreturn processedResults;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        192
+      ],
+      "id": "4561662c-89d8-4fa2-9cba-47e3269d45c2",
+      "name": "추론 태그 제거"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nfor (const item of items) {\n  const collectionName = item.json.category; // Qdrant 컬렉션 이름\n  const filename = item.json.Filename.filename;\n\n  if (!filename) {\n    console.log(\"Filename not found in item. Skipping.\");\n    continue;\n  }\n\n  // 1. filename으로 기존 포인트 검색\n  const searchOptions = {\n    method: 'POST',\n    url: `http://host.docker.internal:6333/collections/${collectionName}/points/scroll`,\n    body: {\n      filter: {\n        must: [{\n          key: \"metadata.filename\",\n          match: {\n            value: filename\n          }\n        }]\n      },\n      limit: 100, // 중복될 수 있는 최대 개수\n      with_payload: false // id만 필요하므로 payload는 가져오지 않음\n    },\n    headers: {\n      'Content-Type': 'application/json',\n    },\n    json: true // 자동으로 JSON을 파싱\n  };\n\n  const searchResponse = await this.helpers.httpRequest(searchOptions);\n  const pointsToDelete = searchResponse.result.points;\n\n  // 2. 기존 포인트가 있으면 삭제\n  if (pointsToDelete && pointsToDelete.length > 0) {\n    const pointIds = pointsToDelete.map(point => point.id);\n    console.log(`Found ${pointIds.length} existing points to delete for filename: ${filename}`);\n\n    const deleteOptions = {\n      method: 'POST',\n      url: `http://host.docker.internal:6333/collections/${collectionName}/points/delete`,\n      body: {\n        points: pointIds\n      },\n      headers: {\n        'Content-Type': 'application/json',\n      },\n      json: true\n    };  \n    \n    await this.helpers.httpRequest(deleteOptions);\n    console.log(`Successfully deleted points with IDs: ${pointIds.join(', ')}`);\n  } else {\n    console.log(`No existing points found for filename: ${filename}. Proceeding to insert.`);\n  }\n}\n\n// 3. 다음 노드로 원본 아이템 전달\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        736
+      ],
+      "id": "42f95b8c-1855-41e1-8d9d-094ea389d5c6",
+      "name": "파일 기준 기존 데이터 삭제"
+    },
+    {
+      "parameters": {
+        "content": "## Collection 생성\ncurl -X PUT http://localhost:6333/collections/IT \\\n-H \"Content-Type: application/json\" \\\n--data-raw '{\n  \"vectors\": {\n    \"size\": 1024,\n    \"distance\": \"Cosine\"\n  }\n}'\n\n1. 🤖 GENERAL - 일반 AI 어시스턴트\n2. 👥 HR - 인사 전문가\n3. 💻 IT - IT 지원 전문가\n4. 📊 DATA - 데이터 분석가\n5. 💰 FINANCE - 재무 전문가\n6. 📢 MARKETING - 마케팅 전문가\n7. ⚖️ LEGAL - 법무 자문\n8. 🔒 SECURITY - 보안 전문가",
+        "height": 432,
+        "width": 384
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -800,
+        752
+      ],
+      "typeVersion": 1,
+      "id": "e1d7e26e-fa75-44e1-8138-52da9caa0cb5",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b4dec370-660b-4216-9098-7f284e427afe",
+              "leftValue": "={{ $json.category }}",
+              "rightValue": "HR|IT|DATA|FINANCE|MARKETING|LEGAL|SECURITY",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -304,
+        192
+      ],
+      "id": "d414314c-242b-4cc8-ae06-680119e35053",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        -64,
+        -16
+      ],
+      "id": "cb73579f-edac-440e-9a09-fdfb8a90200f",
+      "name": "AI Agent1"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "web_hook_field_conversion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "추론 태그 제거",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "web_hook_field_conversion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "chat_field_conversion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant_Vector_Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Ollama1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "파일 기준 기존 데이터 삭제",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Qdrant Vector Store1",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Default Data Loader",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant_Vector_Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "web_hook_field_conversion": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "chat_field_conversion": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "AI Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "응답외 제거": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "추론 태그 제거": {
+      "main": [
+        [
+          {
+            "node": "응답외 제거",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "파일 기준 기존 데이터 삭제": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Store1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "추론 태그 제거",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8a85ffc5-fbdb-4d8b-afa5-5a911f3c6b94",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1ab5896bce6d5f125e933377c5105278b09cd7969c95fe874b2c2927c8a2f23f"
+  },
+  "id": "MwCtIjX3sl4XWObw",
+  "tags": []
+}
