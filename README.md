@@ -1,4 +1,4 @@
-<img width="306" height="40" alt="스크린샷 2025-08-06 오후 3 50 51" src="https://github.com/user-attachments/assets/5be732db-8712-4552-ac10-16ff4f4f673b" /># AI Chatbot Chrome Extension v0.7.0
+# AI Chatbot Chrome Extension v0.7.0
 
 A modern Chrome extension that integrates with n8n webhooks to provide AI-powered chatbot functionality directly in your browser.
 
