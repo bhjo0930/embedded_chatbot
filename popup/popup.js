@@ -73,6 +73,7 @@ class ChatbotPopup {
         // Header buttons
         document.getElementById('settings-btn').addEventListener('click', this.showSettings.bind(this));
         document.getElementById('clear-chat').addEventListener('click', this.clearChat.bind(this));
+        document.getElementById('summarize-page').addEventListener('click', this.handleSummarizePage.bind(this));
         
         // Settings modal
         document.getElementById('close-settings').addEventListener('click', this.hideSettings.bind(this));
@@ -120,6 +121,112 @@ class ChatbotPopup {
         } else {
             this.charCount.style.color = '#94a3b8';
         }
+    }
+
+    /**
+     * Handle summarize page button click
+     */
+    async handleSummarizePage() {
+        try {
+            const response = await new Promise(resolve => {
+                chrome.runtime.sendMessage({ action: 'getPageContent' }, resolve);
+            });
+
+            if (response.success) {
+                this.openSummarizerView(response.data.html, response.data.title);
+            } else {
+                alert(`Error: ${response.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to get page content:', error);
+            alert('Failed to get page content. Please try again.');
+        }
+    }
+
+    /**
+     * Open a new view with page content for summarization
+     */
+    openSummarizerView(htmlContent, pageTitle) {
+        const newWindow = window.open('', '_blank');
+        newWindow.document.write(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>Page Summary: ${pageTitle}</title>
+                <style>
+                    body { font-family: sans-serif; line-height: 1.6; padding: 20px; background-color: #f4f4f9; color: #333; }
+                    #content-wrapper { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                    .collapsible { background-color: #eee; color: #444; cursor: pointer; padding: 12px; width: 100%; border: none; text-align: left; outline: none; font-size: 16px; margin-top: 5px; border-radius: 4px; }
+                    .collapsible:hover { background-color: #ddd; }
+                    .collapsible.active { background-color: #ccc; }
+                    .content { padding: 0 18px; display: none; overflow: hidden; background-color: white; }
+                    #question-box { margin-bottom: 20px; padding: 15px; background: #eef; border-radius: 8px; }
+                    #question-input { width: calc(100% - 90px); padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+                    #ask-button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+                    #ask-button:hover { background-color: #0056b3; }
+                </style>
+            </head>
+            <body>
+                <div id="content-wrapper">
+                    <h2>Summary of: ${pageTitle}</h2>
+                    <div id="question-box">
+                        <input type="text" id="question-input" placeholder="Ask a question about the content...">
+                        <button id="ask-button">Ask</button>
+                    </div>
+                    <div id="page-content"></div>
+                </div>
+                <script>
+                    const html = `${htmlContent.replace(/`/g, '`')}`;
+                    const parser = new DOMParser();
+                    const doc = parser = parser.parseFromString(html, 'text/html');
+                    const body = doc.body;
+
+                    // Sanitize the body content here if needed
+
+                    const contentDiv = document.getElementById('page-content');
+                    
+                    // Simple collapsible logic
+                    let sectionCount = 0;
+                    body.querySelectorAll('div, section, article').forEach(el => {
+                        if (el.innerText.trim().length > 100) { // Only make larger sections collapsible
+                            sectionCount++;
+                            const button = document.createElement('button');
+                            button.className = 'collapsible';
+                            button.textContent = 'Section ' + sectionCount + ' (click to expand)';
+                            
+                            const content = document.createElement('div');
+                            content.className = 'content';
+                            content.innerHTML = el.innerHTML;
+
+                            contentDiv.appendChild(button);
+                            contentDiv.appendChild(content);
+
+                            button.addEventListener('click', function() {
+                                this.classList.toggle('active');
+                                const content = this.nextElementSibling;
+                                if (content.style.display === "block") {
+                                    content.style.display = "none";
+                                } else {
+                                    content.style.display = "block";
+                                }
+                            });
+                        }
+                    });
+
+                    document.getElementById('ask-button').addEventListener('click', () => {
+                        const question = document.getElementById('question-input').value;
+                        if(question) {
+                            // This is where you would send the question and the page content
+                            // to your AI backend for an answer.
+                            alert('Question: ' + question);
+                        }
+                    });
+                <\/script>
+            </body>
+            <\/html>
+        `);
+        newWindow.document.close();
     }
 
     /**

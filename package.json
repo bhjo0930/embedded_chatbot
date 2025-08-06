@@ -1,6 +1,6 @@
 {
   "name": "ai-chatbot-chrome-extension",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "A powerful Chrome extension that integrates AI chatbot functionality with n8n webhooks and Ollama local models",
   "main": "background/background.js",
   "scripts": {

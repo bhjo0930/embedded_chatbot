@@ -17,6 +17,7 @@ class ChatbotSidebar {
         this.messagesContainer = null;
         this.messageInput = null;
         this.sendButton = null;
+        this.htmlButton = null;
         this.categoryOptions = null;
         this.typingIndicator = null;
         this.botAvatar = null;
@@ -45,6 +46,10 @@ class ChatbotSidebar {
             // Set initial toggle button visibility based on settings
             const showToggleButton = this.settings.showToggleButton !== false; // Default to true
             this.setToggleButtonVisibility(showToggleButton);
+            
+            // Set initial HTML button visibility based on settings
+            const showHtmlButton = this.settings.showHtmlButton !== false; // Default to true
+            this.setHtmlButtonVisibility(showHtmlButton);
             
             console.log('[AI Chatbot] Sidebar initialized');
         } catch (error) {
@@ -115,11 +120,13 @@ class ChatbotSidebar {
         this.messagesContainer = this.sidebar.querySelector('.ai-chatbot-messages');
         this.messageInput = this.sidebar.querySelector('.ai-chatbot-input');
         this.sendButton = this.sidebar.querySelector('.ai-chatbot-send-btn');
+        this.htmlButton = this.sidebar.querySelector('.ai-chatbot-html-btn');
         this.categoryOptions = this.sidebar.querySelector('.ai-chatbot-category-options');
         this.typingIndicator = this.sidebar.querySelector('.ai-chatbot-typing');
         this.botAvatar = this.sidebar.querySelector('.ai-chatbot-avatar');
         this.botName = this.sidebar.querySelector('.ai-chatbot-details h3');
         this.charCount = this.sidebar.querySelector('.ai-chatbot-char-count');
+        this.attachmentsArea = this.sidebar.querySelector('.ai-chatbot-attachments-area');
     }
 
     /**
@@ -207,20 +214,30 @@ class ChatbotSidebar {
 
             <!-- Input Area -->
             <div class="ai-chatbot-input-area">
+                <!-- Attachments Area -->
+                <div class="ai-chatbot-attachments-area" style="display: none;">
+                    <!-- Attachments will be added here dynamically -->
+                </div>
+                
                 <div class="ai-chatbot-input-wrapper">
                     <textarea 
                         class="ai-chatbot-input" 
                         placeholder="Type your message..." 
                         rows="1"
-                        maxlength="2000"
+                        maxlength="4000"
                     ></textarea>
+                    <button class="ai-chatbot-html-btn" title="Add current page HTML to chat">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                        </svg>
+                    </button>
                     <button class="ai-chatbot-send-btn" disabled title="Send message">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/>
                         </svg>
                     </button>
                 </div>
-                <div class="ai-chatbot-char-count">0/2000</div>
+                <div class="ai-chatbot-char-count">0/4000</div>
             </div>
         `;
     }
@@ -242,6 +259,9 @@ class ChatbotSidebar {
         
         // Send button
         this.sendButton.addEventListener('click', this.sendMessage.bind(this));
+        
+        // HTML button
+        this.htmlButton.addEventListener('click', this.addPageHtml.bind(this));
         
         // Category selection
         const categoryToggle = this.sidebar.querySelector('.ai-chatbot-category-toggle');
@@ -311,15 +331,15 @@ class ChatbotSidebar {
         const charCount = this.messageInput.value.length;
         
         // Update character count
-        this.charCount.textContent = `${charCount}/2000`;
+        this.charCount.textContent = `${charCount}/4000`;
         
         // Update send button state
         this.sendButton.disabled = !message || this.isTyping;
         
         // Update character count color
-        if (charCount > 1800) {
+        if (charCount > 3600) {
             this.charCount.style.color = '#ef4444';
-        } else if (charCount > 1500) {
+        } else if (charCount > 3000) {
             this.charCount.style.color = '#f59e0b';
         } else {
             this.charCount.style.color = '#94a3b8';
@@ -349,14 +369,42 @@ class ChatbotSidebar {
      */
     async sendMessage() {
         const message = this.messageInput.value.trim();
-        if (!message || this.isTyping) return;
+        const hasAttachments = this.attachmentsArea.children.length > 0;
+        
+        if ((!message && !hasAttachments) || this.isTyping) return;
 
         try {
-            // Add user message to UI
-            this.addMessage(message, 'user');
+            // Build complete message with attachments
+            let completeMessage = '';
             
-            // Clear input and update state
+            // Add attachments to message
+            if (hasAttachments) {
+                const attachments = Array.from(this.attachmentsArea.children);
+                attachments.forEach(attachment => {
+                    completeMessage += `<attachment>
+<icon>${attachment.dataset.icon}</icon>
+<filename>${attachment.dataset.filename}</filename>
+<type>${attachment.dataset.type}</type>
+<url>${attachment.dataset.url}</url>
+<content>${attachment.dataset.content}</content>
+</attachment>
+
+`;
+                });
+            }
+            
+            // Add user message
+            if (message) {
+                completeMessage += message;
+            }
+            
+            // Add user message to UI
+            this.addMessage(completeMessage, 'user');
+            
+            // Clear input and attachments
             this.messageInput.value = '';
+            this.messageInput.placeholder = 'Type your message...';
+            this.clearAttachments();
             this.handleInputChange();
             this.autoResizeTextarea();
             
@@ -417,6 +465,9 @@ class ChatbotSidebar {
         if (type === 'bot' && !isError) {
             // For bot messages, parse for basic formatting safely
             contentDiv.appendChild(this.formatBotMessage(content));
+        } else if (type === 'user' && !isError && (content.includes('<attachment>') || content.includes('<details>'))) {
+            // For user messages with attachment or details tags, also use formatting
+            contentDiv.appendChild(this.formatBotMessage(content));
         } else {
             // For user messages and errors, treat as plain text.
             // Split by newlines to preserve them.
@@ -446,53 +497,414 @@ class ChatbotSidebar {
     }
 
     /**
-     * Safely formats bot message. It handles newlines and links, but avoids innerHTML.
-     * All content is treated as text, preventing XSS.
+     * Safely formats bot message with basic markdown support.
+     * Handles newlines, links, and basic formatting while preventing XSS.
      */
     formatBotMessage(content) {
         const fragment = document.createDocumentFragment();
-        // This regex finds URLs in the text.
-        const linkRegex = /(https?:\/\/[^\s"'<>`]+)/g;
-
-        String(content).split('\n').forEach((line, lineIndex, lines) => {
-            let lastIndex = 0;
-            let match;
-
-            // Find all links in the current line
-            while ((match = linkRegex.exec(line)) !== null) {
-                // Add text before the link
-                if (match.index > lastIndex) {
-                    fragment.appendChild(document.createTextNode(line.substring(lastIndex, match.index)));
+        const lines = String(content).split('\n');
+        let insideDetails = false;
+        let insideAttachment = false;
+        let attachmentData = {};
+        
+        lines.forEach((line, lineIndex) => {
+            // Check if we're inside attachment tag
+            if (line.trim().startsWith('<attachment>')) {
+                insideAttachment = true;
+                attachmentData = {};
+                return;
+            } else if (line.trim() === '</attachment>') {
+                insideAttachment = false;
+                // Create attachment element
+                this.createAttachmentElement(attachmentData, fragment);
+                attachmentData = {};
+                return;
+            }
+            
+            // Process attachment data
+            if (insideAttachment) {
+                if (line.trim().startsWith('<icon>')) {
+                    attachmentData.icon = line.replace(/<\/?icon>/g, '').trim();
+                } else if (line.trim().startsWith('<filename>')) {
+                    attachmentData.filename = line.replace(/<\/?filename>/g, '').trim();
+                } else if (line.trim().startsWith('<type>')) {
+                    attachmentData.type = line.replace(/<\/?type>/g, '').trim();
+                } else if (line.trim().startsWith('<url>')) {
+                    attachmentData.url = line.replace(/<\/?url>/g, '').trim();
+                } else if (line.trim().startsWith('<content>')) {
+                    attachmentData.content = line.replace(/<\/?content>/g, '').trim();
                 }
-
-                // Create the link element
-                const a = document.createElement('a');
-                a.href = match[0];
-                a.target = '_blank';
-                a.rel = 'noopener noreferrer'; // Security best practice
-                a.className = 'external-link';
-                a.textContent = match[0]; // Use textContent for safety
-                fragment.appendChild(a);
-
-                lastIndex = linkRegex.lastIndex;
+                return;
             }
-
-            // Add any remaining text after the last link
-            if (lastIndex < line.length) {
-                fragment.appendChild(document.createTextNode(line.substring(lastIndex)));
+            
+            // Check if we're inside details tag
+            if (line.trim().startsWith('<details>')) {
+                insideDetails = true;
+            } else if (line.trim() === '</details>') {
+                insideDetails = false;
+                // Clean up references
+                delete fragment._currentDetails;
+                delete fragment._currentDetailsContent;
+                return;
             }
-
-            // Add a line break if it's not the last line
-            if (lineIndex < lines.length - 1) {
-                fragment.appendChild(document.createElement('br'));
+            
+            // Process the line
+            if (insideDetails && fragment._currentDetailsContent && 
+                !line.trim().startsWith('<summary>') && 
+                line.trim() !== '</summary>' &&
+                line.trim() !== '') {
+                // Add content to details content area
+                this.processLineWithFormatting(line, fragment._currentDetailsContent);
+                if (lineIndex < lines.length - 1) {
+                    fragment._currentDetailsContent.appendChild(document.createElement('br'));
+                }
+            } else {
+                this.processLineWithFormatting(line, fragment);
+                
+                // Add a line break if it's not the last line and not a special tag
+                if (lineIndex < lines.length - 1 && 
+                    !line.trim().startsWith('<') && 
+                    !line.trim().endsWith('>') &&
+                    line.trim() !== '') {
+                    fragment.appendChild(document.createElement('br'));
+                }
             }
         });
 
-        // For simplicity and security, markdown features like bold, italics, or code blocks
-        // that were previously handled with insecure regex-to-HTML have been removed.
-        // This implementation focuses on the critical task of preventing XSS.
-        // Re-implementing full markdown safely would require a proper, trusted parser library.
         return fragment;
+    }
+
+    /**
+     * Process a single line with safe markdown formatting
+     */
+    processLineWithFormatting(line, fragment) {
+        // Handle attachment tags
+        if (line.trim().startsWith('<attachment>')) {
+            this.processAttachmentTag(line, fragment, 'attachment');
+            return;
+        }
+        
+        if (line.trim() === '</attachment>') {
+            // Attachment closing tag is handled by the opening tag processor
+            return;
+        }
+        
+        // Handle details/summary tags
+        if (line.trim().startsWith('<details>')) {
+            this.processDetailsTag(line, fragment, 'details');
+            return;
+        }
+        
+        if (line.trim().startsWith('<summary>')) {
+            this.processDetailsTag(line, fragment, 'summary');
+            return;
+        }
+        
+        if (line.trim() === '</details>' || line.trim() === '</summary>') {
+            // These closing tags are handled by the opening tag processor
+            return;
+        }
+
+        // Handle table rows
+        if (line.includes('|')) {
+            this.processTableRow(line, fragment);
+            return;
+        }
+
+        // Handle headers
+        if (line.startsWith('#')) {
+            this.processHeader(line, fragment);
+            return;
+        }
+
+        // Handle list items
+        if (line.match(/^\s*[\*\-\+]\s/) || line.match(/^\s*\d+\.\s/)) {
+            this.processListItem(line, fragment);
+            return;
+        }
+
+        // Process regular text with inline formatting
+        this.processInlineFormatting(line, fragment);
+    }
+
+    /**
+     * Process table row
+     */
+    processTableRow(line, fragment) {
+        if (line.includes('---')) {
+            // Skip separator rows
+            return;
+        }
+
+        const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell);
+        
+        if (cells.length > 0) {
+            const table = document.createElement('div');
+            table.className = 'markdown-table-row';
+            table.style.cssText = 'display: flex; border-bottom: 1px solid #e2e8f0; padding: 8px 0;';
+            
+            cells.forEach(cellText => {
+                const cell = document.createElement('div');
+                cell.className = 'markdown-table-cell';
+                cell.style.cssText = 'flex: 1; padding: 4px 8px; border-right: 1px solid #e2e8f0;';
+                
+                // Process inline formatting in cell
+                this.processInlineFormatting(cellText, cell);
+                table.appendChild(cell);
+            });
+            
+            fragment.appendChild(table);
+        }
+    }
+
+    /**
+     * Process header
+     */
+    processHeader(line, fragment) {
+        const level = line.match(/^#+/)[0].length;
+        const text = line.replace(/^#+\s*/, '').replace(/\s*#+$/, '');
+        
+        const header = document.createElement(`h${Math.min(level, 6)}`);
+        header.style.cssText = 'font-weight: bold; margin: 16px 0 8px 0; color: var(--color-text);';
+        
+        this.processInlineFormatting(text, header);
+        fragment.appendChild(header);
+    }
+
+    /**
+     * Process list item
+     */
+    processListItem(line, fragment) {
+        const listItem = document.createElement('div');
+        listItem.style.cssText = 'margin: 4px 0; padding-left: 16px; position: relative;';
+        
+        // Add bullet or number
+        const bullet = document.createElement('span');
+        bullet.style.cssText = 'position: absolute; left: 0; color: var(--color-brand);';
+        
+        if (line.match(/^\s*\d+\.\s/)) {
+            const number = line.match(/^\s*(\d+)\.\s/)[1];
+            bullet.textContent = `${number}.`;
+        } else {
+            bullet.textContent = '•';
+        }
+        
+        listItem.appendChild(bullet);
+        
+        // Add content
+        const content = line.replace(/^\s*(?:[\*\-\+]|\d+\.)\s/, '');
+        this.processInlineFormatting(content, listItem);
+        
+        fragment.appendChild(listItem);
+    }
+
+    /**
+     * Process details/summary tags
+     */
+    processDetailsTag(line, fragment, tagType) {
+        if (tagType === 'details') {
+            const details = document.createElement('details');
+            // CSS styles are handled by the CSS file
+            
+            // Store reference for adding content
+            fragment._currentDetails = details;
+            fragment.appendChild(details);
+        } else if (tagType === 'summary') {
+            const summary = document.createElement('summary');
+            // CSS styles are handled by the CSS file
+            
+            // Extract content from summary tag
+            const summaryContent = line.replace(/<\/?summary>/g, '').trim();
+            this.processInlineFormatting(summaryContent, summary);
+            
+            if (fragment._currentDetails) {
+                fragment._currentDetails.appendChild(summary);
+                
+                // Create content container
+                const contentDiv = document.createElement('div');
+                // CSS styles are handled by the CSS file
+                fragment._currentDetails.appendChild(contentDiv);
+                fragment._currentDetailsContent = contentDiv;
+            }
+        }
+    }
+
+    /**
+     * Create attachment element
+     */
+    createAttachmentElement(data, fragment) {
+        const attachmentDiv = document.createElement('div');
+        attachmentDiv.className = 'ai-chatbot-attachment';
+        
+        // Create attachment content
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'ai-chatbot-attachment-icon';
+        iconDiv.textContent = data.icon || '📄';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'ai-chatbot-attachment-content';
+        
+        const filenameDiv = document.createElement('div');
+        filenameDiv.className = 'ai-chatbot-attachment-filename';
+        filenameDiv.textContent = data.filename || 'Untitled';
+        
+        const typeDiv = document.createElement('div');
+        typeDiv.className = 'ai-chatbot-attachment-type';
+        typeDiv.textContent = data.type || 'FILE';
+        
+        contentDiv.appendChild(filenameDiv);
+        contentDiv.appendChild(typeDiv);
+        
+        // Add remove button (optional)
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'ai-chatbot-attachment-remove';
+        removeBtn.innerHTML = '×';
+        removeBtn.title = 'Remove attachment';
+        
+        attachmentDiv.appendChild(iconDiv);
+        attachmentDiv.appendChild(contentDiv);
+        attachmentDiv.appendChild(removeBtn);
+        
+        // Store attachment data for potential use
+        attachmentDiv.dataset.url = data.url || '';
+        attachmentDiv.dataset.content = data.content || '';
+        
+        fragment.appendChild(attachmentDiv);
+    }
+
+    /**
+     * Process attachment tags (deprecated - replaced by createAttachmentElement)
+     */
+    processAttachmentTag(line, fragment, tagType) {
+        // This function is kept for compatibility but not used
+        // Attachment processing is now handled in formatBotMessage
+    }
+
+    /**
+     * Process inline formatting (bold, italic, code, links)
+     */
+    processInlineFormatting(text, container) {
+        const linkRegex = /(https?:\/\/[^\s"'<>`]+)/g;
+        const boldRegex = /\*\*(.*?)\*\*/g;
+        const italicRegex = /\*(.*?)\*/g;
+        const codeRegex = /`([^`]+)`/g;
+        
+        let lastIndex = 0;
+        const matches = [];
+        
+        // Collect all matches with their positions
+        let match;
+        
+        // Links
+        while ((match = linkRegex.exec(text)) !== null) {
+            matches.push({
+                start: match.index,
+                end: linkRegex.lastIndex,
+                type: 'link',
+                content: match[0],
+                text: match[0]
+            });
+        }
+        
+        // Bold
+        boldRegex.lastIndex = 0;
+        while ((match = boldRegex.exec(text)) !== null) {
+            matches.push({
+                start: match.index,
+                end: boldRegex.lastIndex,
+                type: 'bold',
+                content: match[0],
+                text: match[1]
+            });
+        }
+        
+        // Code (process before italic to avoid conflicts)
+        codeRegex.lastIndex = 0;
+        while ((match = codeRegex.exec(text)) !== null) {
+            matches.push({
+                start: match.index,
+                end: codeRegex.lastIndex,
+                type: 'code',
+                content: match[0],
+                text: match[1]
+            });
+        }
+        
+        // Italic (but not if it's part of bold)
+        italicRegex.lastIndex = 0;
+        while ((match = italicRegex.exec(text)) !== null) {
+            // Skip if this is part of a bold pattern
+            const isBold = text.substring(Math.max(0, match.index - 1), match.index + match[0].length + 1).includes('**');
+            if (!isBold) {
+                matches.push({
+                    start: match.index,
+                    end: italicRegex.lastIndex,
+                    type: 'italic',
+                    content: match[0],
+                    text: match[1]
+                });
+            }
+        }
+        
+        // Sort matches by position
+        matches.sort((a, b) => a.start - b.start);
+        
+        // Remove overlapping matches (keep the first one)
+        const filteredMatches = [];
+        let lastEnd = 0;
+        
+        matches.forEach(match => {
+            if (match.start >= lastEnd) {
+                filteredMatches.push(match);
+                lastEnd = match.end;
+            }
+        });
+        
+        // Process text with formatting
+        lastIndex = 0;
+        filteredMatches.forEach(match => {
+            // Add text before the match
+            if (match.start > lastIndex) {
+                container.appendChild(document.createTextNode(text.substring(lastIndex, match.start)));
+            }
+            
+            // Add formatted element
+            let element;
+            switch (match.type) {
+                case 'link':
+                    element = document.createElement('a');
+                    element.href = match.text;
+                    element.target = '_blank';
+                    element.rel = 'noopener noreferrer';
+                    element.className = 'external-link';
+                    element.textContent = match.text;
+                    break;
+                    
+                case 'bold':
+                    element = document.createElement('strong');
+                    element.textContent = match.text;
+                    break;
+                    
+                case 'italic':
+                    element = document.createElement('em');
+                    element.textContent = match.text;
+                    break;
+                    
+                case 'code':
+                    element = document.createElement('code');
+                    element.style.cssText = 'background: var(--bg-gray); padding: 2px 4px; border-radius: 3px; font-family: monospace;';
+                    element.textContent = match.text;
+                    break;
+            }
+            
+            container.appendChild(element);
+            lastIndex = match.end;
+        });
+        
+        // Add remaining text
+        if (lastIndex < text.length) {
+            container.appendChild(document.createTextNode(text.substring(lastIndex)));
+        }
     }
 
     /**
@@ -711,6 +1123,327 @@ class ChatbotSidebar {
             }
         }
     }
+
+    /**
+     * Set HTML button visibility
+     */
+    setHtmlButtonVisibility(visible) {
+        if (this.htmlButton) {
+            if (visible) {
+                this.htmlButton.style.display = 'flex';
+                console.log('[AI Chatbot] HTML button shown');
+            } else {
+                this.htmlButton.style.display = 'none';
+                console.log('[AI Chatbot] HTML button hidden');
+            }
+        }
+    }
+
+    /**
+     * Add current page HTML to chat
+     */
+    async addPageHtml() {
+        try {
+            // Get page HTML content
+            const pageHtml = this.getPageHtml();
+            const pageTitle = document.title;
+            const pageUrl = window.location.href;
+            
+            // Create attachment data
+            const attachmentData = {
+                icon: '🌐',
+                filename: pageTitle,
+                type: 'HTML',
+                url: pageUrl,
+                content: pageHtml
+            };
+            
+            // Add attachment to the attachments area
+            this.addAttachmentToInput(attachmentData);
+            
+            // Clear input and focus for user question
+            this.messageInput.value = '';
+            this.messageInput.placeholder = 'Ask a question about this page...';
+            this.handleInputChange();
+            this.messageInput.focus();
+            
+        } catch (error) {
+            console.error('[AI Chatbot] Failed to add page HTML:', error);
+            this.addMessage(`Error getting page HTML: ${error.message}`, 'bot', true);
+        }
+    }
+
+    /**
+     * Add attachment to input area
+     */
+    addAttachmentToInput(attachmentData) {
+        // Create attachment element
+        const attachmentDiv = document.createElement('div');
+        attachmentDiv.className = 'ai-chatbot-input-attachment';
+        
+        // Create attachment content
+        const iconDiv = document.createElement('div');
+        iconDiv.className = 'ai-chatbot-input-attachment-icon';
+        iconDiv.textContent = attachmentData.icon || '📄';
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'ai-chatbot-input-attachment-content';
+        
+        const filenameDiv = document.createElement('div');
+        filenameDiv.className = 'ai-chatbot-input-attachment-filename';
+        filenameDiv.textContent = attachmentData.filename || 'Untitled';
+        
+        const typeDiv = document.createElement('div');
+        typeDiv.className = 'ai-chatbot-input-attachment-type';
+        typeDiv.textContent = attachmentData.type || 'FILE';
+        
+        contentDiv.appendChild(filenameDiv);
+        contentDiv.appendChild(typeDiv);
+        
+        // Add remove button
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'ai-chatbot-input-attachment-remove';
+        removeBtn.innerHTML = '×';
+        removeBtn.title = 'Remove attachment';
+        removeBtn.addEventListener('click', () => {
+            this.removeAttachmentFromInput(attachmentDiv);
+        });
+        
+        attachmentDiv.appendChild(iconDiv);
+        attachmentDiv.appendChild(contentDiv);
+        attachmentDiv.appendChild(removeBtn);
+        
+        // Store attachment data
+        attachmentDiv.dataset.url = attachmentData.url || '';
+        attachmentDiv.dataset.content = attachmentData.content || '';
+        attachmentDiv.dataset.filename = attachmentData.filename || '';
+        attachmentDiv.dataset.type = attachmentData.type || '';
+        attachmentDiv.dataset.icon = attachmentData.icon || '';
+        
+        // Add to attachments area
+        this.attachmentsArea.appendChild(attachmentDiv);
+        this.attachmentsArea.style.display = 'block';
+    }
+
+    /**
+     * Remove attachment from input area
+     */
+    removeAttachmentFromInput(attachmentElement) {
+        attachmentElement.remove();
+        
+        // Hide attachments area if no attachments left
+        if (this.attachmentsArea.children.length === 0) {
+            this.attachmentsArea.style.display = 'none';
+            this.messageInput.placeholder = 'Type your message...';
+        }
+    }
+
+    /**
+     * Clear all attachments from input area
+     */
+    clearAttachments() {
+        this.attachmentsArea.innerHTML = '';
+        this.attachmentsArea.style.display = 'none';
+    }
+
+
+
+    /**
+     * Get cleaned HTML content from current page
+     */
+    getPageHtml() {
+        try {
+            let extractedContent = '';
+            
+            // Strategy 1: Try to find main content containers
+            const mainContentSelectors = [
+                'main', 'article', '[role="main"]', '.content', '.main-content',
+                '#content', '#main', '.post-content', '.entry-content'
+            ];
+            
+            for (const selector of mainContentSelectors) {
+                const element = document.querySelector(selector);
+                if (element) {
+                    extractedContent = this.extractTextContent(element);
+                    if (extractedContent && extractedContent.length > 100) {
+                        break;
+                    }
+                }
+            }
+            
+            // Strategy 2: If main content is insufficient, try comprehensive extraction
+            if (!extractedContent || extractedContent.length < 100) {
+                extractedContent = this.extractComprehensiveContent();
+            }
+            
+            // Strategy 3: If still insufficient, extract from meta tags and structured data
+            if (!extractedContent || extractedContent.length < 50) {
+                extractedContent = this.extractFromMetaAndStructuredData();
+            }
+            
+            // Limit the content length
+            const maxLength = 2500;
+            if (extractedContent.length > maxLength) {
+                extractedContent = extractedContent.substring(0, maxLength) + '\n... (content truncated due to length)';
+            }
+            
+            return extractedContent || 'No meaningful content found on this page.';
+            
+        } catch (error) {
+            console.error('[AI Chatbot] Error getting page HTML:', error);
+            return 'Error: Could not extract page content.';
+        }
+    }
+
+    /**
+     * Extract comprehensive content from various elements
+     */
+    extractComprehensiveContent() {
+        const contentElements = document.querySelectorAll(`
+            h1, h2, h3, h4, h5, h6,
+            p, li, dt, dd,
+            .title, .name, .description, .summary,
+            .price, .cost, .amount,
+            .info, .detail, .spec,
+            [class*="title"], [class*="name"], [class*="desc"],
+            [class*="info"], [class*="content"], [class*="text"],
+            [id*="title"], [id*="name"], [id*="desc"],
+            [id*="info"], [id*="content"], [id*="text"]
+        `);
+        
+        const textParts = [];
+        const seenTexts = new Set(); // Avoid duplicates
+        
+        contentElements.forEach(el => {
+            const text = el.textContent.trim();
+            if (text && 
+                text.length > 10 && 
+                text.length < 500 && // Avoid very long texts
+                !this.isLikelyNonContent(text) &&
+                !seenTexts.has(text)) {
+                
+                seenTexts.add(text);
+                textParts.push(text);
+            }
+        });
+        
+        return textParts.slice(0, 50).join('\n\n');
+    }
+
+    /**
+     * Extract content from meta tags and structured data
+     */
+    extractFromMetaAndStructuredData() {
+        const contentParts = [];
+        
+        // Extract from meta tags
+        const title = document.querySelector('title')?.textContent?.trim();
+        if (title) contentParts.push(`제목: ${title}`);
+        
+        const description = document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim();
+        if (description) contentParts.push(`설명: ${description}`);
+        
+        const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim();
+        if (ogTitle && ogTitle !== title) contentParts.push(`페이지 제목: ${ogTitle}`);
+        
+        const ogDescription = document.querySelector('meta[property="og:description"]')?.getAttribute('content')?.trim();
+        if (ogDescription && ogDescription !== description) contentParts.push(`페이지 설명: ${ogDescription}`);
+        
+        // Extract from JSON-LD structured data
+        const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]');
+        jsonLdScripts.forEach(script => {
+            try {
+                const data = JSON.parse(script.textContent);
+                if (data.name) contentParts.push(`상품명: ${data.name}`);
+                if (data.description) contentParts.push(`상품 설명: ${data.description}`);
+                if (data.brand?.name) contentParts.push(`브랜드: ${data.brand.name}`);
+                if (data.offers?.price) contentParts.push(`가격: ${data.offers.price}원`);
+                if (data.aggregateRating?.ratingValue) {
+                    contentParts.push(`평점: ${data.aggregateRating.ratingValue} (${data.aggregateRating.reviewCount}개 리뷰)`);
+                }
+            } catch (e) {
+                // Ignore JSON parsing errors
+            }
+        });
+        
+        // Extract from form inputs and hidden fields (for e-commerce sites)
+        const hiddenInputs = document.querySelectorAll('input[type="hidden"]');
+        hiddenInputs.forEach(input => {
+            const name = input.name;
+            const value = input.value;
+            if (name && value && 
+                (name.includes('item') || name.includes('product') || name.includes('name')) &&
+                value.length > 2 && value.length < 100) {
+                contentParts.push(`${name}: ${value}`);
+            }
+        });
+        
+        return contentParts.join('\n');
+    }
+
+    /**
+     * Check if text is likely non-content (navigation, ads, etc.)
+     */
+    isLikelyNonContent(text) {
+        const nonContentPatterns = [
+            /^(home|about|contact|login|register|subscribe|menu|navigation)$/i,
+            /^(share|like|follow|tweet|facebook|twitter|instagram)$/i,
+            /^(advertisement|sponsored|ad|cookie|privacy policy)$/i,
+            /^(loading|error|404|not found)$/i,
+            /^(이전|다음|닫기|열기|더보기|접기|펼치기)$/i,
+            /^(오늘 하루|하루|열지 않음|보지 않음)$/i,
+            /^[\d\s\-\+\*\/\=\(\)]+$/, // Only numbers and symbols
+            /^[^\w\s]*$/, // Only special characters
+            /^(click here|read more|learn more|see more)$/i,
+            /^(blind|sr-only|screen-reader|visually-hidden)$/i, // Screen reader text
+            /^\s*$/, // Empty or whitespace only
+            /^(새창|새창 열림|팝업|레이어|모달)$/i
+        ];
+        
+        // Skip very short texts that are likely UI elements
+        if (text.length < 3) return true;
+        
+        // Skip texts that are mostly punctuation
+        const alphanumericCount = (text.match(/[a-zA-Z0-9가-힣]/g) || []).length;
+        if (alphanumericCount / text.length < 0.5) return true;
+        
+        return nonContentPatterns.some(pattern => pattern.test(text.trim()));
+    }
+
+    /**
+     * Extract meaningful text content from an element
+     */
+    extractTextContent(element) {
+        // Clone to avoid modifying original
+        const clone = element.cloneNode(true);
+        
+        // Remove unwanted elements
+        const unwantedSelectors = [
+            'script', 'style', 'nav', 'header', 'footer', 
+            '.advertisement', '.ads', '.sidebar', '.menu',
+            '.ai-chatbot-sidebar', '.ai-chatbot-toggle',
+            '.social-share', '.comments', '.related-posts',
+            '.newsletter', '.subscription', '.popup', '.modal',
+            'button', 'input', 'form', '.btn', '.button'
+        ];
+        
+        unwantedSelectors.forEach(selector => {
+            const elements = clone.querySelectorAll(selector);
+            elements.forEach(el => el.remove());
+        });
+        
+        // Get text content and clean it up
+        let text = clone.textContent || clone.innerText || '';
+        
+        // Clean up whitespace and preserve paragraph structure
+        text = text
+            .replace(/\s+/g, ' ')           // Multiple spaces to single space
+            .replace(/\n\s*\n/g, '\n\n')    // Preserve paragraph breaks
+            .replace(/\n\s+/g, '\n')        // Remove leading spaces on new lines
+            .trim();
+            
+        return text;
+    }
 }
 
 // Initialize the sidebar when the page loads
@@ -746,6 +1479,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             window.chatbotSidebar = new ChatbotSidebar();
             setTimeout(() => {
                 window.chatbotSidebar.setToggleButtonVisibility(request.visible);
+            }, 100);
+        }
+        sendResponse({ success: true });
+    } else if (request.action === 'setHtmlButtonVisibility') {
+        // Set HTML button visibility
+        if (window.chatbotSidebar) {
+            window.chatbotSidebar.setHtmlButtonVisibility(request.visible);
+        } else {
+            // Create new instance if it doesn't exist
+            window.chatbotSidebar = new ChatbotSidebar();
+            setTimeout(() => {
+                window.chatbotSidebar.setHtmlButtonVisibility(request.visible);
             }, 100);
         }
         sendResponse({ success: true });

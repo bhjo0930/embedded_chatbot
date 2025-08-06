@@ -101,6 +101,125 @@ Webhook → AI Service → Respond to Webhook
 
 ## 🔧 Advanced Setup
 
+### Qdrant Vector Database Setup (Optional)
+
+If you're using Qdrant for vector storage and retrieval, you'll need to create the required collections for each AI agent category.
+
+#### Prerequisites
+- Qdrant instance running (default: `http://localhost:6333`)
+- Qdrant accessible from your n8n instance
+
+#### Create Vector Collections
+
+Run the following script to create collections for all AI agent categories:
+
+```bash
+#!/bin/bash
+
+# Qdrant Vector Collections Setup Script
+collections=("HR" "IT" "DATA" "FINANCE" "MARKETING" "LEGAL" "SECURITY")
+
+for collection in "${collections[@]}"
+do
+    echo "Creating collection: $collection"
+    curl -X PUT "http://localhost:6333/collections/$collection" \
+        -H "Content-Type: application/json" \
+        --data-raw '{
+            "vectors": {
+                "size": 1024,
+                "distance": "Cosine"
+            }
+        }'
+    echo -e "\n"
+done
+
+echo "All collections created successfully!"
+```
+
+#### Manual Collection Creation
+
+Alternatively, create collections manually using curl commands:
+
+```bash
+# HR Collection
+curl -X PUT "http://localhost:6333/collections/HR" \
+    -H "Content-Type: application/json" \
+    --data-raw '{"vectors": {"size": 1024, "distance": "Cosine"}}'
+
+# IT Collection  
+curl -X PUT "http://localhost:6333/collections/IT" \
+    -H "Content-Type: application/json" \
+    --data-raw '{"vectors": {"size": 1024, "distance": "Cosine"}}'
+
+# DATA Collection
+curl -X PUT "http://localhost:6333/collections/DATA" \
+    -H "Content-Type: application/json" \
+    --data-raw '{"vectors": {"size": 1024, "distance": "Cosine"}}'
+
+# FINANCE Collection
+curl -X PUT "http://localhost:6333/collections/FINANCE" \
+    -H "Content-Type: application/json" \
+    --data-raw '{"vectors": {"size": 1024, "distance": "Cosine"}}'
+
+# MARKETING Collection
+curl -X PUT "http://localhost:6333/collections/MARKETING" \
+    -H "Content-Type: application/json" \
+    --data-raw '{"vectors": {"size": 1024, "distance": "Cosine"}}'
+
+# LEGAL Collection
+curl -X PUT "http://localhost:6333/collections/LEGAL" \
+    -H "Content-Type: application/json" \
+    --data-raw '{"vectors": {"size": 1024, "distance": "Cosine"}}'
+
+# SECURITY Collection
+curl -X PUT "http://localhost:6333/collections/SECURITY" \
+    -H "Content-Type: application/json" \
+    --data-raw '{"vectors": {"size": 1024, "distance": "Cosine"}}'
+```
+
+#### Verify Collections
+
+Check if collections were created successfully:
+
+```bash
+# List all collections
+curl -X GET "http://localhost:6333/collections"
+
+# Get specific collection info
+curl -X GET "http://localhost:6333/collections/HR"
+```
+
+#### Collection Configuration
+
+- **Vector Size**: 1024 (compatible with OpenAI embeddings)
+- **Distance Metric**: Cosine (recommended for text embeddings)
+- **Collections**: One for each AI agent category (HR, IT, DATA, FINANCE, MARKETING, LEGAL, SECURITY)
+
+#### Integration with n8n
+
+To use Qdrant in your n8n workflows:
+
+1. **Install Qdrant Node** (if available) or use HTTP Request nodes
+2. **Configure Connection**:
+   ```json
+   {
+     "url": "http://localhost:6333",
+     "collection": "{{ $json.category }}",
+     "headers": {
+       "Content-Type": "application/json"
+     }
+   }
+   ```
+
+3. **Search Vectors Example**:
+   ```json
+   {
+     "vector": "{{ $json.embedding }}",
+     "limit": 5,
+     "with_payload": true
+   }
+   ```
+
 ### n8n Webhook Security
 
 #### API Key Authentication

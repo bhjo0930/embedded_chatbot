@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Chatbot Assistant",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "AI-powered chatbot extension integrated with n8n webhook",
   "permissions": [
     "storage",

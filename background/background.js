@@ -494,10 +494,42 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 .catch(error => sendResponse({ success: false, error: error.message }));
             return true;
 
+        case 'getPageContent':
+            handleGetPageContent()
+                .then(data => sendResponse({ success: true, data }))
+                .catch(error => sendResponse({ success: false, error: error.message }));
+            return true;
+
         default:
             sendResponse({ success: false, error: 'Unknown action' });
     }
 });
+
+/**
+ * Get page content from active tab
+ */
+async function handleGetPageContent() {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab) {
+            throw new Error('No active tab found.');
+        }
+
+        const results = await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            function: () => document.documentElement.outerHTML
+        });
+
+        if (results && results[0] && results[0].result) {
+            return { html: results[0].result, title: tab.title };
+        } else {
+            throw new Error('Could not retrieve page content.');
+        }
+    } catch (error) {
+        console.error('Error getting page content:', error);
+        throw error;
+    }
+}
 
 /**
  * Handle sending message using unified API client
@@ -594,6 +626,7 @@ async function getDefaultSettings() {
         notifications: true,
         autoScroll: true,
         showToggleButton: true,
+        showHtmlButton: true,
         customHeaders: '',
         version: '0.7.0'
     };
@@ -634,6 +667,7 @@ function validateSettings(settings) {
         notifications: true,
         autoScroll: true,
         showToggleButton: true,
+        showHtmlButton: true,
         customHeaders: '',
         version: '0.7.0'
     };
@@ -680,7 +714,7 @@ function validateSettings(settings) {
     }
 
     // Validate boolean settings
-    ['saveHistory', 'notifications', 'autoScroll', 'showToggleButton'].forEach(key => {
+    ['saveHistory', 'notifications', 'autoScroll', 'showToggleButton', 'showHtmlButton'].forEach(key => {
         if (typeof settings[key] === 'boolean') {
             validated[key] = settings[key];
         }

@@ -49,6 +49,7 @@ class OptionsPage {
         this.autoScrollCheckbox = document.getElementById('auto-scroll');
         this.notificationsCheckbox = document.getElementById('notifications');
         this.showToggleButtonCheckbox = document.getElementById('show-toggle-button');
+        this.showHtmlButtonCheckbox = document.getElementById('show-html-button');
         this.themeSelect = document.getElementById('theme');
         this.sessionDurationInput = document.getElementById('session-duration');
         this.debugModeCheckbox = document.getElementById('debug-mode');
@@ -110,6 +111,7 @@ class OptionsPage {
             this.autoScrollCheckbox,
             this.notificationsCheckbox,
             this.showToggleButtonCheckbox,
+            this.showHtmlButtonCheckbox,
             this.debugModeCheckbox
         ].forEach(element => {
             if (element) {
@@ -458,6 +460,7 @@ class OptionsPage {
         this.autoScrollCheckbox.checked = settings.autoScroll !== false;
         this.notificationsCheckbox.checked = settings.notifications !== false;
         this.showToggleButtonCheckbox.checked = settings.showToggleButton !== false;
+        this.showHtmlButtonCheckbox.checked = settings.showHtmlButton !== false;
         this.themeSelect.value = settings.theme || 'light';
         this.sessionDurationInput.value = settings.sessionDuration || 24;
         this.debugModeCheckbox.checked = settings.debugMode === true;
@@ -493,6 +496,9 @@ class OptionsPage {
             this.updateSaveButton();
             
             this.showToast('Settings saved successfully!', 'success');
+            
+            // Update content scripts with new settings
+            this.updateContentScripts(newSettings);
             
             // Test connection if webhook URL changed
             if (newSettings.webhookUrl && newSettings.webhookUrl !== this.settings.webhookUrl) {
@@ -533,6 +539,7 @@ class OptionsPage {
             autoScroll: this.autoScrollCheckbox.checked,
             notifications: this.notificationsCheckbox.checked,
             showToggleButton: this.showToggleButtonCheckbox.checked,
+            showHtmlButton: this.showHtmlButtonCheckbox.checked,
             theme: this.themeSelect.value,
             sessionDuration: Math.max(1, Math.min(168, parseInt(this.sessionDurationInput.value) || 24)),
             debugMode: this.debugModeCheckbox.checked,
@@ -1014,6 +1021,48 @@ class OptionsPage {
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
         };
+    }
+
+    /**
+     * Update content scripts with new settings
+     */
+    async updateContentScripts(newSettings) {
+        try {
+            // Get all tabs
+            const tabs = await chrome.tabs.query({});
+            
+            // Update each tab's content script
+            for (const tab of tabs) {
+                try {
+                    // Skip chrome:// and other restricted URLs
+                    if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+                        continue;
+                    }
+                    
+                    // Update toggle button visibility
+                    chrome.tabs.sendMessage(tab.id, {
+                        action: 'setToggleButtonVisibility',
+                        visible: newSettings.showToggleButton
+                    }).catch(() => {
+                        // Ignore errors for tabs without content script
+                    });
+                    
+                    // Update HTML button visibility
+                    chrome.tabs.sendMessage(tab.id, {
+                        action: 'setHtmlButtonVisibility',
+                        visible: newSettings.showHtmlButton
+                    }).catch(() => {
+                        // Ignore errors for tabs without content script
+                    });
+                    
+                } catch (error) {
+                    // Ignore errors for individual tabs
+                    console.log(`Could not update tab ${tab.id}:`, error.message);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update content scripts:', error);
+        }
     }
 }
 
