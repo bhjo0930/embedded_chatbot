@@ -1,4 +1,4 @@
-# AI Chatbot Chrome Extension v0.7.0
+# AI Chatbot Chrome Extension v0.9.2
 
 A modern Chrome extension that integrates with n8n webhooks to provide AI-powered chatbot functionality directly in your browser.
 
