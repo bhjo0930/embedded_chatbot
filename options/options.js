@@ -53,7 +53,6 @@ class OptionsPage {
         this.themeSelect = document.getElementById('theme');
         this.sessionDurationInput = document.getElementById('session-duration');
         this.debugModeCheckbox = document.getElementById('debug-mode');
-        this.customHeadersTextarea = document.getElementById('custom-headers');
         
         // Backend-specific sections
         this.n8nSettings = document.getElementById('n8n-settings');
@@ -97,8 +96,7 @@ class OptionsPage {
             this.temperatureInput,
             this.timeoutInput,
             this.maxRetriesInput,
-            this.sessionDurationInput,
-            this.customHeadersTextarea
+            this.sessionDurationInput
         ].forEach(element => {
             if (element) {
                 element.addEventListener('input', this.handleFormChange.bind(this));
@@ -253,9 +251,6 @@ class OptionsPage {
             case 'session-duration':
                 this.validateSessionDuration(field, value);
                 break;
-            case 'custom-headers':
-                this.validateCustomHeaders(field, value);
-                break;
         }
     }
 
@@ -318,22 +313,6 @@ class OptionsPage {
     }
 
     /**
-     * Validate custom headers JSON
-     */
-    validateCustomHeaders(field, value) {
-        if (!value) return true;
-        
-        try {
-            JSON.parse(value);
-            this.setFieldValidation(field, true);
-            return true;
-        } catch (error) {
-            this.setFieldValidation(field, false, 'Invalid JSON format');
-            return false;
-        }
-    }
-
-    /**
      * Set field validation state
      */
     setFieldValidation(field, isValid, errorMessage = '') {
@@ -367,7 +346,6 @@ class OptionsPage {
         // Validate based on selected backend
         if (backend === 'n8n') {
             isValid = this.validateWebhookUrl(this.webhookUrlInput, this.webhookUrlInput.value.trim()) && isValid;
-            isValid = this.validateCustomHeaders(this.customHeadersTextarea, this.customHeadersTextarea.value.trim()) && isValid;
         } else if (backend === 'ollama') {
             isValid = this.validateOllamaUrl(this.ollamaUrlInput, this.ollamaUrlInput.value.trim()) && isValid;
             isValid = this.validateTemperature(this.temperatureInput, this.temperatureInput.value) && isValid;
@@ -428,7 +406,6 @@ class OptionsPage {
             theme: 'light',
             sessionDuration: 24,
             debugMode: false,
-            customHeaders: '',
             version: '0.7.0'
         };
     }
@@ -443,7 +420,6 @@ class OptionsPage {
         
         // n8n settings
         this.webhookUrlInput.value = settings.webhookUrl || '';
-        this.customHeadersTextarea.value = settings.customHeaders || '';
         
         // Ollama settings
         if (this.ollamaUrlInput) {
@@ -515,18 +491,6 @@ class OptionsPage {
      * Gather form data
      */
     gatherFormData() {
-        const customHeaders = this.customHeadersTextarea.value.trim();
-        let parsedHeaders = '';
-        
-        if (customHeaders) {
-            try {
-                // Validate and format JSON
-                parsedHeaders = JSON.stringify(JSON.parse(customHeaders));
-            } catch (error) {
-                parsedHeaders = '';
-            }
-        }
-
         return {
             backend: this.backendSelect.value,
             webhookUrl: this.webhookUrlInput.value.trim(),
@@ -543,7 +507,6 @@ class OptionsPage {
             theme: this.themeSelect.value,
             sessionDuration: Math.max(1, Math.min(168, parseInt(this.sessionDurationInput.value) || 24)),
             debugMode: this.debugModeCheckbox.checked,
-            customHeaders: parsedHeaders,
             version: '0.7.0'
         };
     }

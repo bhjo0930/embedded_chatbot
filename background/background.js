@@ -117,8 +117,7 @@ class UnifiedApiClient {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    ...this.parseCustomHeaders()
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(payload),
                 signal: controller.signal
@@ -174,17 +173,6 @@ class UnifiedApiClient {
         }
     }
 
-    parseCustomHeaders() {
-        if (!this.settings.customHeaders) {
-            return {};
-        }
-        try {
-            return JSON.parse(this.settings.customHeaders);
-        } catch (error) {
-            console.warn('Invalid custom headers JSON:', error);
-            return {};
-        }
-    }
 
     async testConnection() {
         if (this.backend === 'ollama') {
@@ -262,8 +250,7 @@ class UnifiedApiClient {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    ...this.parseCustomHeaders()
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(testPayload),
                 signal: controller.signal
@@ -420,7 +407,6 @@ async function initializeDefaultSettings() {
             showToggleButton: true,
             showHtmlButton: true,
             sidebarWidth: 400,
-            customHeaders: '',
             version: '0.7.0'
         };
 
@@ -630,7 +616,6 @@ async function getDefaultSettings() {
         showToggleButton: true,
         showHtmlButton: true,
         sidebarWidth: 400,
-        customHeaders: '',
         version: '0.7.0'
     };
 
@@ -672,7 +657,6 @@ function validateSettings(settings) {
         showToggleButton: true,
         showHtmlButton: true,
         sidebarWidth: 400,
-        customHeaders: '',
         version: '0.7.0'
     };
 
@@ -712,11 +696,6 @@ function validateSettings(settings) {
         validated.timeout = Math.max(5, Math.min(600, settings.timeout));
     }
 
-    // Validate custom headers
-    if (settings.customHeaders && typeof settings.customHeaders === 'string') {
-        validated.customHeaders = settings.customHeaders.trim();
-    }
-
     // Validate sidebar width
     if (settings.sidebarWidth && typeof settings.sidebarWidth === 'number') {
         validated.sidebarWidth = Math.max(300, Math.min(800, settings.sidebarWidth));
@@ -738,15 +717,85 @@ function validateSettings(settings) {
 }
 
 /**
- * Validate URL format
+ * Validate URL format and security.
+ * Prevents requests to private, loopback, or reserved IP addresses.
  */
 function isValidUrl(string) {
     try {
         const url = new URL(string);
-        return url.protocol === 'http:' || url.protocol === 'https:';
+
+        // 1. Protocol check
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            return false;
+        }
+
+        // 2. Hostname check
+        const hostname = url.hostname;
+
+        // Disallow IP addresses in private ranges to prevent SSRF
+        if (isPrivateIP(hostname)) {
+            console.warn(`Blocked request to private IP: ${hostname}`);
+            return false;
+        }
+
+        // In a real-world scenario with DNS resolution capabilities,
+        // you would also resolve the hostname and check the resulting IP.
+        // For example: const ip = await resolveDns(hostname);
+        // if (isPrivateIP(ip)) { return false; }
+
+        return true;
     } catch {
         return false;
     }
+}
+
+/**
+ * Checks if a given string is a private, loopback, or reserved IP address.
+ * @param {string} ip - The IP address string to check.
+ * @returns {boolean} - True if the IP is private, false otherwise.
+ */
+function isPrivateIP(ip) {
+    if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+        // It's not an IPv4 address, could be a domain name.
+        // We allow domain names here and would rely on DNS resolution
+        // in a more advanced implementation.
+        // A simple check for localhost is still valuable.
+        return ip.toLowerCase() === 'localhost';
+    }
+
+    const parts = ip.split('.').map(part => parseInt(part, 10));
+
+    // Check for loopback address (127.0.0.0/8)
+    if (parts[0] === 127) {
+        return true;
+    }
+
+    // Check for private class A (10.0.0.0/8)
+    if (parts[0] === 10) {
+        return true;
+    }
+
+    // Check for private class B (172.16.0.0/12)
+    if (parts[0] === 172 && (parts[1] >= 16 && parts[1] <= 31)) {
+        return true;
+    }
+
+    // Check for private class C (192.168.0.0/16)
+    if (parts[0] === 192 && parts[1] === 168) {
+        return true;
+    }
+
+    // Check for Carrier-grade NAT (100.64.0.0/10)
+    if (parts[0] === 100 && (parts[1] >= 64 && parts[1] <= 127)) {
+        return true;
+    }
+
+    // Check for broadcast address
+    if (ip === '255.255.255.255') {
+        return true;
+    }
+
+    return false;
 }
 
 /**
