@@ -46,6 +46,7 @@ class ChatbotSidebar {
             await this.loadSettings();
             this.createToggleButton();
             this.createSidebar();
+            this.populateCategories();
             this.bindEvents();
             await this.loadCategorySelection();
 
@@ -158,7 +159,9 @@ class ChatbotSidebar {
             <!-- Header -->
             <div class="ai-chatbot-header">
                 <div class="ai-chatbot-header-info">
-                    <div class="ai-chatbot-avatar">🤖</div>
+                    <div class="ai-chatbot-avatar">
+                        <img src="${chrome.runtime.getURL('icons/icon48.png')}" alt="AI Chatbot" width="24" height="24">
+                    </div>
                     <div class="ai-chatbot-details">
                         <h3>General AI</h3>
                         <div class="ai-chatbot-status">Ready to help</div>
@@ -178,38 +181,7 @@ class ChatbotSidebar {
                     </button>
                 </div>
                 <div class="ai-chatbot-category-options">
-                    <button class="ai-chatbot-category-btn active" data-category="GENERAL" data-icon="🤖">
-                        <span class="ai-chatbot-category-icon">🤖</span>
-                        <span class="ai-chatbot-category-name">General</span>
-                    </button>
-                    <button class="ai-chatbot-category-btn" data-category="HR" data-icon="👥">
-                        <span class="ai-chatbot-category-icon">👥</span>
-                        <span class="ai-chatbot-category-name">HR</span>
-                    </button>
-                    <button class="ai-chatbot-category-btn" data-category="IT" data-icon="💻">
-                        <span class="ai-chatbot-category-icon">💻</span>
-                        <span class="ai-chatbot-category-name">IT</span>
-                    </button>
-                    <button class="ai-chatbot-category-btn" data-category="DATA" data-icon="📊">
-                        <span class="ai-chatbot-category-icon">📊</span>
-                        <span class="ai-chatbot-category-name">Data</span>
-                    </button>
-                    <button class="ai-chatbot-category-btn" data-category="FINANCE" data-icon="💰">
-                        <span class="ai-chatbot-category-icon">💰</span>
-                        <span class="ai-chatbot-category-name">Finance</span>
-                    </button>
-                    <button class="ai-chatbot-category-btn" data-category="MARKETING" data-icon="📢">
-                        <span class="ai-chatbot-category-icon">📢</span>
-                        <span class="ai-chatbot-category-name">Marketing</span>
-                    </button>
-                    <button class="ai-chatbot-category-btn" data-category="LEGAL" data-icon="⚖️">
-                        <span class="ai-chatbot-category-icon">⚖️</span>
-                        <span class="ai-chatbot-category-name">Legal</span>
-                    </button>
-                    <button class="ai-chatbot-category-btn" data-category="SECURITY" data-icon="🔒">
-                        <span class="ai-chatbot-category-icon">🔒</span>
-                        <span class="ai-chatbot-category-name">Security</span>
-                    </button>
+                    <!-- Category buttons will be dynamically populated based on settings -->
                 </div>
             </div>
 
@@ -261,6 +233,72 @@ class ChatbotSidebar {
                 <div class="ai-chatbot-char-count">0/4000</div>
             </div>
         `;
+    }
+
+    /**
+     * Populate category buttons based on settings
+     */
+    populateCategories() {
+        const categoryOptions = this.sidebar.querySelector('.ai-chatbot-category-options');
+        if (!categoryOptions) return;
+
+        const categories = [
+            { key: 'GENERAL', name: 'General', icon: '🤖' },
+            { key: 'HR', name: 'HR', icon: '👥' },
+            { key: 'IT', name: 'IT', icon: '💻' },
+            { key: 'DATA', name: 'Data', icon: '📊' },
+            { key: 'FINANCE', name: 'Finance', icon: '💰' },
+            { key: 'MARKETING', name: 'Marketing', icon: '📢' },
+            { key: 'LEGAL', name: 'Legal', icon: '⚖️' },
+            { key: 'SECURITY', name: 'Security', icon: '🔒' }
+        ];
+
+        const visibleCategories = this.settings.visibleCategories || {
+            GENERAL: true,
+            HR: false,
+            IT: false,
+            DATA: false,
+            FINANCE: false,
+            MARKETING: false,
+            LEGAL: false,
+            SECURITY: false
+        };
+
+        // Clear existing buttons
+        categoryOptions.innerHTML = '';
+
+        // Add visible category buttons
+        let firstVisibleCategory = null;
+        categories.forEach(category => {
+            if (visibleCategories[category.key]) {
+                const button = document.createElement('button');
+                button.className = 'ai-chatbot-category-btn';
+                button.setAttribute('data-category', category.key);
+                button.setAttribute('data-icon', category.icon);
+                
+                button.innerHTML = `
+                    <span class="ai-chatbot-category-icon">${category.icon}</span>
+                    <span class="ai-chatbot-category-name">${category.name}</span>
+                `;
+                
+                categoryOptions.appendChild(button);
+                
+                // Set the first visible category as default active
+                if (!firstVisibleCategory) {
+                    firstVisibleCategory = category.key;
+                    button.classList.add('active');
+                }
+            }
+        });
+
+        // Update the selected category title
+        if (firstVisibleCategory) {
+            const selectedCategorySpan = this.sidebar.querySelector('.ai-chatbot-selected-category');
+            if (selectedCategorySpan) {
+                const firstCategory = categories.find(c => c.key === firstVisibleCategory);
+                selectedCategorySpan.textContent = firstCategory ? firstCategory.name : 'General';
+            }
+        }
     }
 
     /**
@@ -530,10 +568,16 @@ class ChatbotSidebar {
         contentDiv.className = 'ai-chatbot-message-content';
 
         if (type === 'bot' && !isError) {
-            // For bot messages, parse for basic formatting safely
-            contentDiv.appendChild(this.formatBotMessage(content));
+            // Sanitize the content from the bot before formatting
+            const sanitizedContent = DOMPurify.sanitize(content, {
+                ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li', 'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'details', 'summary'],
+                ALLOWED_ATTR: ['href', 'target', 'rel']
+            });
+            const formattedContent = this.formatBotMessage(sanitizedContent);
+            contentDiv.appendChild(formattedContent);
         } else if (type === 'user' && !isError && (content.includes('<attachment>') || content.includes('<details>'))) {
             // For user messages with attachment or details tags, also use formatting
+            // This is content generated by the extension itself, so it's considered safe.
             contentDiv.appendChild(this.formatBotMessage(content));
         } else {
             // For user messages and errors, treat as plain text.
@@ -1191,7 +1235,7 @@ class ChatbotSidebar {
      * Update bot header with category info
      */
     updateBotHeader(category, icon) {
-        this.botAvatar.textContent = icon;
+        // Keep the icon image, don't change the avatar content
 
         const categoryNames = {
             GENERAL: 'General AI',

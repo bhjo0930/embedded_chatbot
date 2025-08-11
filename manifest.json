@@ -32,9 +32,15 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["lib/utils.js", "content/content.js"],
+      "js": ["lib/dompurify.min.js", "lib/utils.js", "content/content.js"],
       "css": ["content/sidebar.css"],
       "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*.png"],
+      "matches": ["<all_urls>"]
     }
   ],
   "content_security_policy": {

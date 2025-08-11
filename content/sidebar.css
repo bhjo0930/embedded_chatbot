@@ -143,6 +143,12 @@ body.ai-chatbot-resizing {
     font-size: 18px !important;
 }
 
+.ai-chatbot-avatar img {
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 4px !important;
+}
+
 .ai-chatbot-details h3 {
     font-size: 16px !important;
     font-weight: 600 !important;
