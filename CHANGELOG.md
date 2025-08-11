@@ -1,281 +1,139 @@
 # Changelog
 
-All notable changes to the AI Chatbot Chrome Extension will be documented in this file.
+All notable changes to this AI Chatbot Extension project will be documented in this file.
 
-## [0.7.0] - 2025-01-08
+## [v0.9.2] - 2024-12-XX
 
-### 🚀 Major Feature: Extension Icon Integration
+### 🔧 Major Bug Fixes
 
-#### Smart Extension Icon Behavior
-- **Extension Icon Click**: Now toggles sidebar on web pages or shows popup on restricted pages
-- **Intelligent Routing**: Automatically determines whether to show sidebar or popup based on page type
-- **Dynamic Script Injection**: Automatically injects content scripts when needed
-- **Fallback Mechanism**: Graceful fallback to popup if sidebar injection fails
+#### 1. HTML Attachment Information Loss Fix
+- **Problem**: HTML attachment content was not being sent to AI, causing AI to be unable to answer page-related questions
+- **Solution**: 
+  - Modified `sendMessageToBackground()` to send complete message including attachments
+  - Fixed message transmission logic in `content.js`
+  - Added proper attachment content handling
+- **Files**: `content/content.js`, `background/background.js`
 
-#### Enhanced Content Script System
-- **Background Communication**: Seamless message passing between background and content scripts
-- **Global Instance Management**: Proper singleton pattern for sidebar instances
-- **Auto-initialization**: Content scripts initialize automatically on page load
-- **Error Recovery**: Robust error handling and recovery mechanisms
+#### 2. Markdown Table Rendering Fix
+- **Problem**: Markdown tables were rendered as separate rows instead of complete tables
+- **Solution**:
+  - Implemented `processCompleteTable()` function for unified table processing
+  - Enhanced table separator filtering with regex `/^[\s\|:\-]+$/`
+  - Disabled legacy `processTableRow()` to prevent duplicate tables
+  - Added proper header/data row styling with zebra striping
+- **Files**: `content/content.js`, `content/sidebar.css`
 
-#### Improved User Experience
-- **Unified Interface**: Consistent experience between popup and sidebar
-- **Enhanced Message Formatting**: Full markdown support in both popup and sidebar
-- **Category Standardization**: All categories now use uppercase format consistently
-- **Smart Page Detection**: Automatic detection of restricted pages (chrome://, extension pages)
+#### 3. Sidebar Resize Functionality
+- **Problem**: Users couldn't adjust sidebar width
+- **Solution**:
+  - Added resize handle with drag functionality
+  - Implemented width constraints (300px - 800px)
+  - Added visual feedback during resize
+  - Persistent width storage in browser settings
+  - Dynamic page margin adjustment
+- **Files**: `content/content.js`, `content/sidebar.css`, `background/background.js`
 
-### 🔧 Technical Improvements
+#### 4. Excessive Line Breaks Fix
+- **Problem**: Too many `<br>` tags causing excessive white space
+- **Solution**:
+  - Implemented conditional `<br>` generation logic
+  - Excluded special elements (headers, lists, tables) from automatic `<br>` insertion
+  - Added next-line checking to prevent unnecessary breaks
+  - Optimized spacing in details/summary tags
+- **Files**: `content/content.js`
 
-#### Manifest V3 Enhancements
-- **Scripting Permission**: Added `scripting` permission for dynamic content injection
-- **Dynamic Popup**: Removed default popup to enable smart icon behavior
-- **Content Script Optimization**: Improved content script loading and execution
+#### 5. Dash Separator Processing Fix
+- **Problem**: "---" characters appearing as text instead of horizontal rules
+- **Solution**:
+  - Added markdown horizontal rule processing (`---`, `***`, `___`)
+  - Enhanced table separator filtering patterns
+  - Implemented `processHorizontalRule()` function with proper styling
+  - Added standalone separator line removal
+- **Files**: `content/content.js`
 
-#### Architecture Updates
-- **Message Routing**: Enhanced message passing system between components
-- **State Management**: Better state synchronization across popup and sidebar
-- **Error Handling**: Comprehensive error handling and logging
-
-#### Code Quality
-- **TypeScript-like Patterns**: Better type checking and validation
-- **Modern JavaScript**: Updated to use modern JavaScript features
-- **Performance Optimization**: Reduced memory footprint and improved responsiveness
-
-### 📱 User Interface
+### 🎨 UI/UX Improvements
 
 #### Sidebar Enhancements
-- **Responsive Design**: Better adaptation to different screen sizes
-- **Smooth Animations**: Enhanced open/close animations
-- **Visual Consistency**: Matching design language with popup
-- **Accessibility**: Improved keyboard navigation and screen reader support
+- **Resizable sidebar**: Drag left edge to adjust width (300px - 800px)
+- **Visual feedback**: Hover effects and resize indicators
+- **Persistent settings**: Width preferences saved across sessions
 
-#### Message Display
-- **Rich Formatting**: Support for lists, code blocks, headers, and links
-- **Line Break Handling**: Proper handling of `\n` and `\\n` characters
-- **Typography**: Enhanced readability with better fonts and spacing
-- **Color Coding**: Syntax highlighting for code blocks
+#### Table Rendering
+- **Professional styling**: Proper borders, padding, and alternating row colors
+- **Header distinction**: Bold headers with different background color
+- **Responsive design**: Tables adapt to sidebar width
 
-### 🎯 Usage Scenarios
+#### Message Formatting
+- **Clean spacing**: Reduced excessive white space between elements
+- **Horizontal rules**: Markdown separators render as visual lines
+- **Consistent typography**: Improved readability and visual hierarchy
 
-#### Web Pages
-1. Click extension icon → Sidebar toggles
-2. Use sidebar for contextual AI assistance
-3. Categories automatically sync with popup preferences
+### 🧪 Testing & Documentation
 
-#### Restricted Pages
-1. Click extension icon → Popup opens
-2. Full functionality available in popup
-3. Settings and preferences accessible
+#### Test Files Added
+- `test-html-attachment.html` - HTML attachment functionality testing
+- `test-table-rendering.html` - Table rendering and resize testing  
+- `test-table-fix.html` - Table header processing testing
+- `test-br-spacing.html` - Line break spacing testing
+- `test-dash-separator.html` - Dash separator processing testing
+- `test-resize-debug.html` - Sidebar resize debugging
 
-### 🔄 Migration & Compatibility
+#### Documentation Added
+- `HTML_ATTACHMENT_FIX_GUIDE.md` - HTML attachment fix guide
+- `TABLE_AND_RESIZE_FIX_GUIDE.md` - Table and resize feature guide
+- `TABLE_HEADER_FIX_GUIDE.md` - Table header processing guide
+- `RESIZE_TROUBLESHOOTING_GUIDE.md` - Resize troubleshooting guide
+- `BR_SPACING_FIX_GUIDE.md` - Line break spacing fix guide
+- `DASH_SEPARATOR_FIX_GUIDE.md` - Dash separator fix guide
 
-#### Automatic Migration
-- **Settings Preservation**: All existing settings automatically migrated
-- **Category Updates**: Lowercase categories automatically converted to uppercase
-- **Backward Compatibility**: Existing workflows continue to work seamlessly
+### 🔧 Technical Details
 
-#### Enhanced Features
-- **Improved Performance**: Faster loading and response times
-- **Better Error Messages**: More informative error handling
-- **Enhanced Logging**: Better debugging and troubleshooting support
+#### Code Architecture Improvements
+- **Modular table processing**: Centralized table handling logic
+- **Enhanced message formatting**: Safer XSS-resistant content processing
+- **Improved event handling**: Better resize and interaction management
+- **Settings management**: Extended settings schema for new features
 
-### 🛠️ Developer Experience
+#### Performance Optimizations
+- **Reduced DOM manipulation**: Batch processing for table creation
+- **Efficient resize handling**: Optimized drag event processing
+- **Memory management**: Proper event cleanup and reference management
 
-#### Debugging Tools
-- **Global Access**: Sidebar instance accessible via `window.chatbotSidebar`
-- **Enhanced Logging**: Detailed console logging for troubleshooting
-- **Error Reporting**: Comprehensive error reporting and stack traces
+#### Browser Compatibility
+- **CSS improvements**: Better cross-browser styling consistency
+- **JavaScript enhancements**: Modern ES6+ features with fallbacks
+- **Extension API**: Proper Chrome Extension Manifest V3 compliance
 
-#### Code Organization
-- **Modular Architecture**: Better separation of concerns
-- **Reusable Components**: Shared formatting and utility functions
-- **Documentation**: Improved inline documentation and comments
+### 🐛 Bug Fixes Summary
 
----
+1. **HTML Attachment**: Fixed content transmission to AI backend
+2. **Table Rendering**: Fixed broken table display and duplicate creation
+3. **Sidebar Resize**: Added missing resize functionality with constraints
+4. **Line Spacing**: Fixed excessive white space in AI responses
+5. **Dash Separators**: Fixed "---" text appearing instead of horizontal rules
 
-## [0.6.0] - 2025-01-08
+### 📊 Impact
 
-### 🎨 Enhanced User Experience
+- **User Experience**: Significantly improved readability and functionality
+- **AI Interaction**: Enhanced AI's ability to process page content
+- **Customization**: Added user control over interface sizing
+- **Visual Quality**: Professional-looking tables and formatting
+- **Reliability**: Reduced rendering issues and improved consistency
 
-#### Message Formatting & Display
-- **Enhanced Markdown Support**: Full support for bold (`**text**`), italic (`*text*`), inline code (`` `code` ``), and code blocks (` ```code``` `)
-- **Improved Line Breaks**: Proper handling of `\n` and `\\n` characters in AI responses
-- **List Support**: Automatic formatting of numbered lists (`1. item`) and bullet lists (`- item`, `* item`)
-- **Section Headers**: Support for markdown headers (`#`, `##`, `###`)
-- **Auto-link Detection**: Automatic conversion of URLs to clickable links
-- **Enhanced Typography**: Better spacing, colors, and visual hierarchy for formatted content
+### 🔄 Migration Notes
 
-#### Category System Standardization
-- **Uppercase Categories**: All categories standardized to uppercase format (GENERAL, HR, IT, DATA, FINANCE, MARKETING, LEGAL, SUPPORT)
-- **Consistent API**: Unified category handling across all backends and components
-- **Updated Documentation**: All examples and documentation updated to reflect uppercase categories
-
-#### Developer Experience
-- **Debug Functions**: Added `testMessageFormatting()` function for testing message display
-- **Global Access**: Chatbot instance accessible via `window.chatbot` for debugging
-- **Enhanced CSS**: Comprehensive styling for all message formatting elements
-
-### 🔧 Technical Improvements
-
-#### Code Quality
-- **Deprecated Method Updates**: Replaced all `substr()` calls with `substring()` for modern JavaScript compliance
-- **Enhanced Error Handling**: Better error messages and user feedback
-- **Performance Optimizations**: Improved message rendering and formatting performance
-
-#### UI/UX Enhancements
-- **Visual Consistency**: Improved visual consistency across all formatted elements
-- **Better Readability**: Enhanced contrast and spacing for better text readability
-- **Responsive Design**: Improved formatting display on different screen sizes
-
-### 📋 Updated Components
-
-#### Frontend
-- **popup/popup.js**: Enhanced `formatBotMessage()` function with comprehensive markdown support
-- **popup/popup.css**: Added extensive styling for formatted message elements
-- **popup/popup.html**: Updated category buttons with uppercase values
-
-#### Backend
-- **background/background.js**: Updated system prompts and category handling
-- **lib/ollama-client.js**: Standardized category processing
-- **lib/unified-api-client.js**: Consistent category handling across backends
-
-#### Configuration
-- **All config files**: Updated to use uppercase categories
-- **Test files**: Updated test cases and examples
-- **Documentation**: Comprehensive updates to reflect new category system
-
-### 🎯 Supported Message Formats
-
-```markdown
-**Bold text** and *italic text*
-`inline code` and code blocks
-1. Numbered lists
-- Bullet lists
-### Section headers
-https://auto-linked-urls.com
-```
-
-### 🚀 Migration from v0.5.0
-
-- **Automatic**: Categories are automatically converted to uppercase
-- **Backward Compatible**: Old lowercase categories still work
-- **Enhanced Display**: Existing messages benefit from improved formatting
+- **Settings**: New `sidebarWidth` setting added (default: 400px)
+- **CSS**: Updated sidebar styles for resize functionality
+- **JavaScript**: Enhanced message processing logic
+- **Backward Compatibility**: All existing functionality preserved
 
 ---
 
-## [0.5.0] - 2025-01-08
+## Previous Versions
 
-### 🎉 Major Features Added
-
-#### Dual Backend Support
-- **n8n Webhook Integration**: Connect to n8n workflows for AI processing
-- **Ollama Local Support**: Run AI models locally with Ollama
-- **Backend Switching**: Easy toggle between n8n and Ollama in settings
-
-#### Advanced Settings & Configuration
-- **Comprehensive Settings Page**: Full-featured options page with organized sections
-- **Connection Testing**: Built-in connection test for both backends
-- **Custom Headers**: Support for custom HTTP headers in n8n requests
-- **Temperature Control**: Adjustable creativity settings for Ollama models
-- **Timeout & Retry Configuration**: Customizable request timeouts and retry logic
-
-#### Enhanced User Experience
-- **Theme Support**: Light, dark, and auto themes
-- **Chat History**: Persistent conversation history with export/import
-- **Auto-scroll**: Automatic scrolling to new messages
-- **Notifications**: Browser notifications for new messages
-- **Session Management**: Intelligent session handling with 24-hour expiry
-
-#### Performance & Debugging
-- **Debug Mode**: Detailed logging and performance monitoring
-- **Performance Analytics**: API call tracking, memory usage monitoring
-- **Error Handling**: Comprehensive error handling with user-friendly messages
-- **CORS Support**: Proper CORS configuration for Ollama integration
-
-### 🔧 Technical Improvements
-
-#### Response Processing
-- **Smart Response Parsing**: Automatic removal of AI "thinking" patterns
-- **Multi-language Support**: Works with both English and Korean responses
-- **Content Cleaning**: Removes meta-commentary and analysis artifacts
-
-#### Data Management
-- **Local Storage**: Efficient browser storage management
-- **Data Export**: Export chat history as JSON
-- **Data Cleanup**: Automatic cleanup of old messages (30+ days)
-- **Storage Statistics**: Real-time storage usage monitoring
-
-#### Security & Validation
-- **Input Validation**: Comprehensive validation for all user inputs
-- **URL Validation**: Proper URL format checking for webhook/Ollama endpoints
-- **JSON Validation**: Safe JSON parsing with error handling
-- **Settings Validation**: Type checking and range validation for all settings
-
-### 🎨 User Interface
-- **Modern Design**: Clean, professional interface with smooth animations
-- **Responsive Layout**: Works on different screen sizes
-- **Accessibility**: Proper contrast ratios and keyboard navigation
-- **Visual Feedback**: Loading states, success/error indicators
-- **Organized Settings**: Grouped settings with clear descriptions
-
-### 🔌 Integration Features
-- **Multiple AI Categories**: Support for HR, IT, Data, Finance, Marketing, Legal, Support agents
-- **System Prompts**: Category-specific system prompts for better responses
-- **Model Selection**: Automatic and manual Ollama model selection
-- **Connection Status**: Real-time connection status indicators
-
-### 🛠️ Developer Experience
-- **Modular Architecture**: Clean separation of concerns
-- **Error Logging**: Comprehensive error logging and debugging
-- **Performance Monitoring**: Built-in performance tracking
-- **Code Documentation**: Extensive inline documentation
-
-### 📋 Supported Features
-- ✅ n8n webhook integration
-- ✅ Ollama local AI models
-- ✅ Chat history persistence
-- ✅ Theme customization
-- ✅ Debug mode with performance monitoring
-- ✅ Multi-language response processing
-- ✅ Connection testing and validation
-- ✅ Data export/import
-- ✅ Custom headers support
-- ✅ Session management
-- ✅ Auto-scroll and notifications
-- ✅ Comprehensive settings management
-
-### 🔧 Configuration Options
-- Backend selection (n8n/Ollama)
-- Webhook URL configuration
-- Ollama URL and model selection
-- Temperature and creativity settings
-- Request timeout and retry settings
-- Theme preferences
-- Chat history settings
-- Debug mode toggle
-- Custom HTTP headers
-- Session duration settings
-
-### 📦 Installation Requirements
-- Chrome browser (Manifest V3 support)
-- For n8n: Active n8n instance with webhook endpoint
-- For Ollama: Local Ollama installation with CORS configuration
-
-### 🚀 Performance
-- Fast response times with optimized API calls
-- Efficient memory usage with automatic cleanup
-- Responsive UI with smooth animations
-- Background processing for better user experience
-
----
-
-## Development Notes
-
-This version represents a significant milestone in the development of the AI Chatbot Chrome Extension, providing a solid foundation for both n8n and Ollama integrations with comprehensive settings management and user experience enhancements.
-
-### Next Version Goals
-- Enhanced AI model management
-- Advanced conversation features
-- Integration with more AI backends
-- Mobile responsiveness improvements
-- Advanced analytics and insights
+### [v0.9.1] - Previous Release
+- Basic chatbot functionality
+- HTML attachment feature (with bugs)
+- Simple table rendering (with issues)
+- Fixed sidebar width
+- Basic message formatting

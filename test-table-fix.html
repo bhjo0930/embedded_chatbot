@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>테이블 헤더 처리 수정 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .markdown-example {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .expected-result {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 테이블 헤더 처리 수정 테스트</h1>
+    
+    <div class="test-section">
+        <h2>문제 상황</h2>
+        <p>❌ 마크다운 테이블의 구분선(<code>|------|------|</code>)이 제대로 필터링되지 않음</p>
+        <p>❌ 테이블이 중복으로 생성됨</p>
+        <p>❌ 헤더와 데이터 행이 분리되어 표시됨</p>
+    </div>
+
+    <div class="test-section">
+        <h2>테스트 1: 기본 테이블</h2>
+        <p>AI 챗봇에게 다음과 같이 요청해보세요:</p>
+        <blockquote>
+            "다음 정보를 마크다운 테이블로 만들어주세요:<br>
+            제품명: 스마트폰 A, 가격: 800,000원<br>
+            제품명: 스마트폰 B, 가격: 1,200,000원"
+        </blockquote>
+        
+        <h3>예상 마크다운 응답:</h3>
+        <div class="markdown-example">| 제품명 | 가격 |
+|--------|------|
+| 스마트폰 A | 800,000원 |
+| 스마트폰 B | 1,200,000원 |</div>
+
+        <div class="expected-result">
+            <h4>✅ 수정 후 예상 결과:</h4>
+            <ul>
+                <li>구분선(<code>|--------|------|</code>)이 화면에 표시되지 않음</li>
+                <li>헤더 행이 배경색과 굵은 글씨로 구분됨</li>
+                <li>데이터 행들이 하나의 완전한 테이블로 표시됨</li>
+                <li>테이블이 중복 생성되지 않음</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>테스트 2: 복잡한 테이블</h2>
+        <p>더 복잡한 테이블로 테스트해보세요:</p>
+        <blockquote>
+            "직원 정보를 표로 정리해주세요:<br>
+            김철수 - 개발팀 - 과장 - 5년차<br>
+            이영희 - 디자인팀 - 대리 - 3년차<br>
+            박민수 - 마케팅팀 - 부장 - 8년차"
+        </blockquote>
+
+        <h3>예상 마크다운 응답:</h3>
+        <div class="markdown-example">| 이름 | 부서 | 직급 | 경력 |
+|------|------|------|------|
+| 김철수 | 개발팀 | 과장 | 5년차 |
+| 이영희 | 디자인팀 | 대리 | 3년차 |
+| 박민수 | 마케팅팀 | 부장 | 8년차 |</div>
+    </div>
+
+    <div class="test-section">
+        <h2>테스트 3: 빈 셀이 있는 테이블</h2>
+        <p>빈 셀이 포함된 테이블 테스트:</p>
+        <blockquote>
+            "다음을 표로 만들어주세요 (일부 정보 누락):<br>
+            제품 A - 가격 미정<br>
+            제품 B - 50,000원 - 재고 있음<br>
+            제품 C - 30,000원"
+        </blockquote>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 적용된 수정사항</h2>
+        <ul>
+            <li><strong>구분선 필터링 개선</strong>: 정규식으로 <code>|, -, :, 공백</code>만 포함된 행 제거</li>
+            <li><strong>테이블 중복 방지</strong>: 기존 <code>processTableRow</code> 함수 비활성화</li>
+            <li><strong>셀 처리 개선</strong>: 앞뒤 빈 셀 제거, 중간 빈 셀 유지</li>
+            <li><strong>테이블 감지 로직 개선</strong>: 모든 테이블 관련 행을 수집 후 일괄 처리</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 확인 사항</h2>
+        <ol>
+            <li>구분선이 화면에 표시되지 않는가?</li>
+            <li>헤더 행이 시각적으로 구분되는가?</li>
+            <li>테이블이 하나로 통합되어 표시되는가?</li>
+            <li>빈 셀이 올바르게 처리되는가?</li>
+            <li>테이블 스타일링이 일관되게 적용되는가?</li>
+        </ol>
+    </div>
+
+    <script>
+        console.log('🔧 테이블 헤더 처리 수정 테스트 페이지 로드됨');
+        console.log('AI 챗봇에서 테이블 생성을 테스트해보세요.');
+        
+        // 테이블 요소 모니터링
+        setInterval(() => {
+            const tables = document.querySelectorAll('.markdown-table');
+            const tableRows = document.querySelectorAll('.markdown-table-row');
+            
+            if (tables.length > 0 || tableRows.length > 0) {
+                console.log('📊 테이블 상태:', {
+                    완전한테이블: tables.length,
+                    개별행: tableRows.length,
+                    중복여부: tableRows.length > tables.length * 2 ? '의심됨' : '정상'
+                });
+            }
+        }, 3000);
+    </script>
+</body>
+</html>

@@ -10,7 +10,7 @@ class ChatbotSidebar {
         this.currentSessionId = null;
         this.isTyping = false;
         this.settings = {};
-        
+
         // DOM elements
         this.sidebar = null;
         this.toggleButton = null;
@@ -23,7 +23,13 @@ class ChatbotSidebar {
         this.botAvatar = null;
         this.botName = null;
         this.charCount = null;
+        this.resizeHandle = null;
         
+        // Resize state
+        this.isResizing = false;
+        this.startX = 0;
+        this.startWidth = 400;
+
         this.init();
     }
 
@@ -42,15 +48,19 @@ class ChatbotSidebar {
             this.createSidebar();
             this.bindEvents();
             await this.loadCategorySelection();
-            
+
             // Set initial toggle button visibility based on settings
             const showToggleButton = this.settings.showToggleButton !== false; // Default to true
             this.setToggleButtonVisibility(showToggleButton);
-            
+
             // Set initial HTML button visibility based on settings
             const showHtmlButton = this.settings.showHtmlButton !== false; // Default to true
             this.setHtmlButtonVisibility(showHtmlButton);
             
+            // Apply saved sidebar width with !important
+            const savedWidth = this.settings.sidebarWidth || 400;
+            this.sidebar.style.setProperty('width', `${savedWidth}px`, 'important');
+
             console.log('[AI Chatbot] Sidebar initialized');
         } catch (error) {
             console.error('[AI Chatbot] Failed to initialize sidebar:', error);
@@ -68,7 +78,7 @@ class ChatbotSidebar {
             'about:',
             'file://'
         ];
-        
+
         const currentUrl = window.location.href.toLowerCase();
         return skipDomains.some(domain => currentUrl.startsWith(domain));
     }
@@ -82,7 +92,7 @@ class ChatbotSidebar {
                 if (response && response.success) {
                     this.settings = response.data;
                 } else {
-                    this.settings = { 
+                    this.settings = {
                         webhookUrl: '',
                         timeout: 30,
                         saveHistory: true
@@ -102,7 +112,7 @@ class ChatbotSidebar {
         this.toggleButton.innerHTML = '💬';
         this.toggleButton.title = 'Toggle AI Chatbot';
         this.toggleButton.setAttribute('aria-label', 'Toggle AI Chatbot');
-        
+
         document.body.appendChild(this.toggleButton);
     }
 
@@ -113,9 +123,9 @@ class ChatbotSidebar {
         this.sidebar = document.createElement('div');
         this.sidebar.className = 'ai-chatbot-sidebar';
         this.sidebar.innerHTML = this.getSidebarHTML();
-        
+
         document.body.appendChild(this.sidebar);
-        
+
         // Get references to elements
         this.messagesContainer = this.sidebar.querySelector('.ai-chatbot-messages');
         this.messageInput = this.sidebar.querySelector('.ai-chatbot-input');
@@ -127,6 +137,14 @@ class ChatbotSidebar {
         this.botName = this.sidebar.querySelector('.ai-chatbot-details h3');
         this.charCount = this.sidebar.querySelector('.ai-chatbot-char-count');
         this.attachmentsArea = this.sidebar.querySelector('.ai-chatbot-attachments-area');
+        this.resizeHandle = this.sidebar.querySelector('.ai-chatbot-resize-handle');
+        
+        // Debug: Check if resize handle was found
+        if (this.resizeHandle) {
+            console.log('[AI Chatbot] Resize handle found and ready');
+        } else {
+            console.error('[AI Chatbot] Resize handle not found!');
+        }
     }
 
     /**
@@ -134,6 +152,9 @@ class ChatbotSidebar {
      */
     getSidebarHTML() {
         return `
+            <!-- Resize Handle -->
+            <div class="ai-chatbot-resize-handle"></div>
+            
             <!-- Header -->
             <div class="ai-chatbot-header">
                 <div class="ai-chatbot-header-info">
@@ -248,39 +269,49 @@ class ChatbotSidebar {
     bindEvents() {
         // Toggle button
         this.toggleButton.addEventListener('click', this.toggleSidebar.bind(this));
-        
+
         // Close button
         const closeButton = this.sidebar.querySelector('.ai-chatbot-close');
         closeButton.addEventListener('click', this.closeSidebar.bind(this));
-        
+
         // Message input
         this.messageInput.addEventListener('input', this.handleInputChange.bind(this));
         this.messageInput.addEventListener('keydown', this.handleKeyDown.bind(this));
-        
+
         // Send button
         this.sendButton.addEventListener('click', this.sendMessage.bind(this));
-        
+
         // HTML button
         this.htmlButton.addEventListener('click', this.addPageHtml.bind(this));
-        
+
         // Category selection
         const categoryToggle = this.sidebar.querySelector('.ai-chatbot-category-toggle');
         categoryToggle.addEventListener('click', this.toggleCategories.bind(this));
-        
+
         const categoryButtons = this.sidebar.querySelectorAll('.ai-chatbot-category-btn');
         categoryButtons.forEach(btn => {
             btn.addEventListener('click', this.selectCategory.bind(this));
         });
-        
+
         // Auto-resize textarea
         this.messageInput.addEventListener('input', this.autoResizeTextarea.bind(this));
-        
+
         // Close on escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isOpen) {
                 this.closeSidebar();
             }
         });
+        
+        // Resize functionality
+        if (this.resizeHandle) {
+            this.resizeHandle.addEventListener('mousedown', this.startResize.bind(this));
+            document.addEventListener('mousemove', this.handleResize.bind(this));
+            document.addEventListener('mouseup', this.stopResize.bind(this));
+            console.log('[AI Chatbot] Resize events bound successfully');
+        } else {
+            console.error('[AI Chatbot] Cannot bind resize events - handle not found');
+        }
     }
 
     /**
@@ -303,8 +334,13 @@ class ChatbotSidebar {
         this.toggleButton.innerHTML = '✕';
         this.toggleButton.title = 'Close AI Chatbot';
         document.body.classList.add('ai-chatbot-sidebar-open');
-        this.isOpen = true;
         
+        // Apply current sidebar width to body margin
+        const currentWidth = this.sidebar.offsetWidth;
+        document.body.style.setProperty('margin-right', `${currentWidth}px`, 'important');
+        
+        this.isOpen = true;
+
         // Focus input
         setTimeout(() => {
             this.messageInput.focus();
@@ -320,6 +356,7 @@ class ChatbotSidebar {
         this.toggleButton.innerHTML = '💬';
         this.toggleButton.title = 'Open AI Chatbot';
         document.body.classList.remove('ai-chatbot-sidebar-open');
+        document.body.style.removeProperty('margin-right');
         this.isOpen = false;
     }
 
@@ -329,21 +366,44 @@ class ChatbotSidebar {
     handleInputChange() {
         const message = this.messageInput.value.trim();
         const charCount = this.messageInput.value.length;
-        
-        // Update character count
-        this.charCount.textContent = `${charCount}/4000`;
-        
+
+        // Calculate attachment content length
+        let attachmentLength = 0;
+        if (this.attachmentsArea.children.length > 0) {
+            const attachments = Array.from(this.attachmentsArea.children);
+            attachments.forEach(attachment => {
+                const content = attachment.dataset.content || '';
+                attachmentLength += content.length + 200; // Add overhead for attachment tags
+            });
+        }
+
+        const totalLength = charCount + attachmentLength;
+        const maxLength = 4000;
+        const availableLength = Math.max(0, maxLength - attachmentLength);
+
+        // Update character count display
+        if (attachmentLength > 0) {
+            this.charCount.textContent = `${charCount}/${availableLength} (${attachmentLength} from attachments)`;
+        } else {
+            this.charCount.textContent = `${charCount}/${maxLength}`;
+        }
+
         // Update send button state
-        this.sendButton.disabled = !message || this.isTyping;
-        
+        const hasAttachments = this.attachmentsArea.children.length > 0;
+        this.sendButton.disabled = (!message && !hasAttachments) || this.isTyping || totalLength > maxLength;
+
         // Update character count color
-        if (charCount > 3600) {
+        const ratio = totalLength / maxLength;
+        if (ratio > 0.95) {
             this.charCount.style.color = '#ef4444';
-        } else if (charCount > 3000) {
+        } else if (ratio > 0.8) {
             this.charCount.style.color = '#f59e0b';
         } else {
             this.charCount.style.color = '#94a3b8';
         }
+
+        // Update input maxlength dynamically
+        this.messageInput.setAttribute('maxlength', availableLength.toString());
     }
 
     /**
@@ -370,13 +430,13 @@ class ChatbotSidebar {
     async sendMessage() {
         const message = this.messageInput.value.trim();
         const hasAttachments = this.attachmentsArea.children.length > 0;
-        
+
         if ((!message && !hasAttachments) || this.isTyping) return;
 
         try {
             // Build complete message with attachments
             let completeMessage = '';
-            
+
             // Add attachments to message
             if (hasAttachments) {
                 const attachments = Array.from(this.attachmentsArea.children);
@@ -392,31 +452,38 @@ class ChatbotSidebar {
 `;
                 });
             }
-            
+
             // Add user message
             if (message) {
                 completeMessage += message;
             }
-            
+
+            // Check message length and truncate if necessary
+            const maxTotalLength = 3800; // Leave some buffer for API processing
+            if (completeMessage.length > maxTotalLength) {
+                console.warn('[AI Chatbot] Message too long, truncating...', completeMessage.length);
+                completeMessage = completeMessage.substring(0, maxTotalLength) + '\n... (message truncated due to length)';
+            }
+
             // Add user message to UI
             this.addMessage(completeMessage, 'user');
-            
+
             // Clear input and attachments
             this.messageInput.value = '';
             this.messageInput.placeholder = 'Type your message...';
             this.clearAttachments();
             this.handleInputChange();
             this.autoResizeTextarea();
-            
+
             // Show typing indicator
             this.showTyping();
-            
-            // Send message to background script
-            const response = await this.sendMessageToBackground(message);
-            
+
+            // Send message to background script (include complete message with attachments)
+            const response = await this.sendMessageToBackground(message, completeMessage);
+
             // Hide typing indicator
             this.hideTyping();
-            
+
             // Add bot response to UI
             if (response.success) {
                 this.addMessage(response.data.message, 'bot');
@@ -424,13 +491,13 @@ class ChatbotSidebar {
             } else {
                 this.addMessage(`Error: ${response.error}`, 'bot', true);
             }
-            
+
         } catch (error) {
             console.error('[AI Chatbot] Failed to send message:', error);
             this.hideTyping();
             this.addMessage(`Error: ${error.message}`, 'bot', true);
         }
-        
+
         // Focus back to input
         this.messageInput.focus();
     }
@@ -438,12 +505,12 @@ class ChatbotSidebar {
     /**
      * Send message to background script
      */
-    sendMessageToBackground(message) {
+    sendMessageToBackground(message, completeMessage = null) {
         return new Promise((resolve) => {
             chrome.runtime.sendMessage({
                 action: 'sendMessage',
                 data: {
-                    message: message,
+                    message: completeMessage || message,
                     sessionId: this.currentSessionId,
                     category: this.selectedCategory
                 }
@@ -457,7 +524,7 @@ class ChatbotSidebar {
     addMessage(content, type, isError = false) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `ai-chatbot-message ${type}${isError ? ' error' : ''}`;
-        
+
         // The container for the actual message content
         const contentDiv = document.createElement('div');
         contentDiv.className = 'ai-chatbot-message-content';
@@ -485,13 +552,13 @@ class ChatbotSidebar {
         timeDiv.className = 'ai-chatbot-message-time';
         timeDiv.textContent = this.formatTime(new Date());
         messageDiv.appendChild(timeDiv);
-        
+
         // Remove welcome message if exists
         const welcomeMessage = this.messagesContainer.querySelector('.ai-chatbot-welcome');
         if (welcomeMessage) {
             welcomeMessage.remove();
         }
-        
+
         this.messagesContainer.appendChild(messageDiv);
         this.scrollToBottom();
     }
@@ -506,7 +573,7 @@ class ChatbotSidebar {
         let insideDetails = false;
         let insideAttachment = false;
         let attachmentData = {};
-        
+
         lines.forEach((line, lineIndex) => {
             // Check if we're inside attachment tag
             if (line.trim().startsWith('<attachment>')) {
@@ -520,7 +587,7 @@ class ChatbotSidebar {
                 attachmentData = {};
                 return;
             }
-            
+
             // Process attachment data
             if (insideAttachment) {
                 if (line.trim().startsWith('<icon>')) {
@@ -536,7 +603,7 @@ class ChatbotSidebar {
                 }
                 return;
             }
-            
+
             // Check if we're inside details tag
             if (line.trim().startsWith('<details>')) {
                 insideDetails = true;
@@ -547,29 +614,59 @@ class ChatbotSidebar {
                 delete fragment._currentDetailsContent;
                 return;
             }
-            
+
             // Process the line
-            if (insideDetails && fragment._currentDetailsContent && 
-                !line.trim().startsWith('<summary>') && 
+            if (insideDetails && fragment._currentDetailsContent &&
+                !line.trim().startsWith('<summary>') &&
                 line.trim() !== '</summary>' &&
                 line.trim() !== '') {
                 // Add content to details content area
                 this.processLineWithFormatting(line, fragment._currentDetailsContent);
+                
+                // Only add br between consecutive text lines in details
                 if (lineIndex < lines.length - 1) {
-                    fragment._currentDetailsContent.appendChild(document.createElement('br'));
+                    const nextLine = lines[lineIndex + 1];
+                    if (nextLine && 
+                        nextLine.trim() !== '' &&
+                        nextLine.trim() !== '</details>' &&
+                        !nextLine.trim().startsWith('<') &&
+                        !nextLine.trim().startsWith('#')) {
+                        fragment._currentDetailsContent.appendChild(document.createElement('br'));
+                    }
                 }
             } else {
                 this.processLineWithFormatting(line, fragment);
-                
-                // Add a line break if it's not the last line and not a special tag
+
+                // Add a line break only for consecutive text lines (not after headers, lists, tables, etc.)
                 if (lineIndex < lines.length - 1 && 
-                    !line.trim().startsWith('<') && 
+                    line.trim() !== '' &&
+                    !line.trim().startsWith('<') &&
                     !line.trim().endsWith('>') &&
-                    line.trim() !== '') {
-                    fragment.appendChild(document.createElement('br'));
+                    !line.trim().startsWith('#') &&
+                    !line.trim().match(/^\s*[\*\-\+]\s/) &&
+                    !line.trim().match(/^\s*\d+\.\s/) &&
+                    !line.includes('|')) {
+                    
+                    const nextLine = lines[lineIndex + 1];
+                    // Only add br if next line is also regular text (not empty, not special formatting)
+                    if (nextLine && 
+                        nextLine.trim() !== '' &&
+                        !nextLine.trim().startsWith('<') &&
+                        !nextLine.trim().startsWith('#') &&
+                        !nextLine.trim().match(/^\s*[\*\-\+]\s/) &&
+                        !nextLine.trim().match(/^\s*\d+\.\s/) &&
+                        !nextLine.includes('|')) {
+                        fragment.appendChild(document.createElement('br'));
+                    }
                 }
             }
         });
+
+        // Process any remaining table rows at the end
+        if (fragment._pendingTableRows && fragment._pendingTableRows.length > 0) {
+            this.processCompleteTable(fragment._pendingTableRows, fragment);
+            fragment._pendingTableRows = [];
+        }
 
         return fragment;
     }
@@ -583,37 +680,53 @@ class ChatbotSidebar {
             this.processAttachmentTag(line, fragment, 'attachment');
             return;
         }
-        
+
         if (line.trim() === '</attachment>') {
             // Attachment closing tag is handled by the opening tag processor
             return;
         }
-        
+
         // Handle details/summary tags
         if (line.trim().startsWith('<details>')) {
             this.processDetailsTag(line, fragment, 'details');
             return;
         }
-        
+
         if (line.trim().startsWith('<summary>')) {
             this.processDetailsTag(line, fragment, 'summary');
             return;
         }
-        
+
         if (line.trim() === '</details>' || line.trim() === '</summary>') {
             // These closing tags are handled by the opening tag processor
             return;
         }
 
-        // Handle table rows
+        // Handle table rows - collect all table-related lines
         if (line.includes('|')) {
-            this.processTableRow(line, fragment);
+            // Initialize pending table rows if not exists
+            fragment._pendingTableRows = fragment._pendingTableRows || [];
+            
+            // Add line to pending rows (including separator lines for now)
+            fragment._pendingTableRows.push(line);
             return;
+        }
+
+        // Process any pending table rows when we encounter a non-table line
+        if (fragment._pendingTableRows && fragment._pendingTableRows.length > 0) {
+            this.processCompleteTable(fragment._pendingTableRows, fragment);
+            fragment._pendingTableRows = [];
         }
 
         // Handle headers
         if (line.startsWith('#')) {
             this.processHeader(line, fragment);
+            return;
+        }
+
+        // Handle horizontal rules (---, ***, ___)
+        if (line.match(/^\s*[-*_]{3,}\s*$/)) {
+            this.processHorizontalRule(line, fragment);
             return;
         }
 
@@ -623,38 +736,108 @@ class ChatbotSidebar {
             return;
         }
 
+        // Skip standalone separator lines that might be table separators
+        if (line.match(/^\s*[-:|\s]+\s*$/)) {
+            // This is likely a table separator or similar, skip it
+            return;
+        }
+
         // Process regular text with inline formatting
         this.processInlineFormatting(line, fragment);
     }
 
     /**
-     * Process table row
+     * Process complete table from multiple rows
+     */
+    processCompleteTable(tableRows, fragment) {
+        if (!tableRows || tableRows.length === 0) return;
+
+        // Filter out separator rows and empty rows more accurately
+        const validRows = tableRows.filter(row => {
+            const trimmed = row.trim();
+            if (!trimmed || !trimmed.includes('|')) return false;
+            
+            // Check if it's a separator row (contains only |, -, :, and spaces)
+            // More comprehensive pattern to catch all separator variations
+            const isSeparator = /^[\s\|:\-]+$/.test(trimmed) || 
+                               /^\|[\s:\-\|]*\|$/.test(trimmed) ||
+                               /^[\s]*\|?[\s:\-]+\|?[\s]*$/.test(trimmed);
+            
+            return !isSeparator;
+        });
+
+        if (validRows.length === 0) return;
+
+        // Create table container
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'markdown-table';
+        tableContainer.style.cssText = `
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 12px 0;
+            background: #fff;
+        `;
+
+        validRows.forEach((row, rowIndex) => {
+            // Split by | and trim, but keep empty cells (don't filter them out)
+            const allCells = row.split('|').map(cell => cell.trim());
+            // Remove first and last empty cells (from leading/trailing |)
+            const cells = allCells.slice(
+                allCells[0] === '' ? 1 : 0,
+                allCells[allCells.length - 1] === '' ? -1 : allCells.length
+            );
+            
+            if (cells.length > 0) {
+                const tableRow = document.createElement('div');
+                tableRow.className = 'markdown-table-row';
+                
+                // Header row styling
+                if (rowIndex === 0) {
+                    tableRow.style.cssText = `
+                        display: flex;
+                        background: #f8fafc;
+                        border-bottom: 2px solid #e2e8f0;
+                        font-weight: 600;
+                    `;
+                } else {
+                    tableRow.style.cssText = `
+                        display: flex;
+                        border-bottom: 1px solid #e2e8f0;
+                        background: ${rowIndex % 2 === 1 ? '#fff' : '#f9fafb'};
+                    `;
+                }
+
+                cells.forEach((cellText, cellIndex) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'markdown-table-cell';
+                    cell.style.cssText = `
+                        flex: 1;
+                        padding: 12px 16px;
+                        border-right: ${cellIndex < cells.length - 1 ? '1px solid #e2e8f0' : 'none'};
+                        min-width: 0;
+                        word-wrap: break-word;
+                    `;
+
+                    // Process inline formatting in cell
+                    this.processInlineFormatting(cellText, cell);
+                    tableRow.appendChild(cell);
+                });
+
+                tableContainer.appendChild(tableRow);
+            }
+        });
+
+        fragment.appendChild(tableContainer);
+    }
+
+    /**
+     * Process table row (legacy - disabled)
      */
     processTableRow(line, fragment) {
-        if (line.includes('---')) {
-            // Skip separator rows
-            return;
-        }
-
-        const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell);
-        
-        if (cells.length > 0) {
-            const table = document.createElement('div');
-            table.className = 'markdown-table-row';
-            table.style.cssText = 'display: flex; border-bottom: 1px solid #e2e8f0; padding: 8px 0;';
-            
-            cells.forEach(cellText => {
-                const cell = document.createElement('div');
-                cell.className = 'markdown-table-cell';
-                cell.style.cssText = 'flex: 1; padding: 4px 8px; border-right: 1px solid #e2e8f0;';
-                
-                // Process inline formatting in cell
-                this.processInlineFormatting(cellText, cell);
-                table.appendChild(cell);
-            });
-            
-            fragment.appendChild(table);
-        }
+        // This function is now completely handled by processCompleteTable
+        // Disabled to prevent duplicate table creation
+        return;
     }
 
     /**
@@ -663,12 +846,26 @@ class ChatbotSidebar {
     processHeader(line, fragment) {
         const level = line.match(/^#+/)[0].length;
         const text = line.replace(/^#+\s*/, '').replace(/\s*#+$/, '');
-        
+
         const header = document.createElement(`h${Math.min(level, 6)}`);
         header.style.cssText = 'font-weight: bold; margin: 16px 0 8px 0; color: var(--color-text);';
-        
+
         this.processInlineFormatting(text, header);
         fragment.appendChild(header);
+    }
+
+    /**
+     * Process horizontal rule (---, ***, ___)
+     */
+    processHorizontalRule(line, fragment) {
+        const hr = document.createElement('hr');
+        hr.style.cssText = `
+            border: none;
+            border-top: 2px solid #e2e8f0;
+            margin: 20px 0;
+            width: 100%;
+        `;
+        fragment.appendChild(hr);
     }
 
     /**
@@ -677,24 +874,24 @@ class ChatbotSidebar {
     processListItem(line, fragment) {
         const listItem = document.createElement('div');
         listItem.style.cssText = 'margin: 4px 0; padding-left: 16px; position: relative;';
-        
+
         // Add bullet or number
         const bullet = document.createElement('span');
         bullet.style.cssText = 'position: absolute; left: 0; color: var(--color-brand);';
-        
+
         if (line.match(/^\s*\d+\.\s/)) {
             const number = line.match(/^\s*(\d+)\.\s/)[1];
             bullet.textContent = `${number}.`;
         } else {
             bullet.textContent = '•';
         }
-        
+
         listItem.appendChild(bullet);
-        
+
         // Add content
         const content = line.replace(/^\s*(?:[\*\-\+]|\d+\.)\s/, '');
         this.processInlineFormatting(content, listItem);
-        
+
         fragment.appendChild(listItem);
     }
 
@@ -705,21 +902,21 @@ class ChatbotSidebar {
         if (tagType === 'details') {
             const details = document.createElement('details');
             // CSS styles are handled by the CSS file
-            
+
             // Store reference for adding content
             fragment._currentDetails = details;
             fragment.appendChild(details);
         } else if (tagType === 'summary') {
             const summary = document.createElement('summary');
             // CSS styles are handled by the CSS file
-            
+
             // Extract content from summary tag
             const summaryContent = line.replace(/<\/?summary>/g, '').trim();
             this.processInlineFormatting(summaryContent, summary);
-            
+
             if (fragment._currentDetails) {
                 fragment._currentDetails.appendChild(summary);
-                
+
                 // Create content container
                 const contentDiv = document.createElement('div');
                 // CSS styles are handled by the CSS file
@@ -735,40 +932,40 @@ class ChatbotSidebar {
     createAttachmentElement(data, fragment) {
         const attachmentDiv = document.createElement('div');
         attachmentDiv.className = 'ai-chatbot-attachment';
-        
+
         // Create attachment content
         const iconDiv = document.createElement('div');
         iconDiv.className = 'ai-chatbot-attachment-icon';
         iconDiv.textContent = data.icon || '📄';
-        
+
         const contentDiv = document.createElement('div');
         contentDiv.className = 'ai-chatbot-attachment-content';
-        
+
         const filenameDiv = document.createElement('div');
         filenameDiv.className = 'ai-chatbot-attachment-filename';
         filenameDiv.textContent = data.filename || 'Untitled';
-        
+
         const typeDiv = document.createElement('div');
         typeDiv.className = 'ai-chatbot-attachment-type';
         typeDiv.textContent = data.type || 'FILE';
-        
+
         contentDiv.appendChild(filenameDiv);
         contentDiv.appendChild(typeDiv);
-        
+
         // Add remove button (optional)
         const removeBtn = document.createElement('button');
         removeBtn.className = 'ai-chatbot-attachment-remove';
         removeBtn.innerHTML = '×';
         removeBtn.title = 'Remove attachment';
-        
+
         attachmentDiv.appendChild(iconDiv);
         attachmentDiv.appendChild(contentDiv);
         attachmentDiv.appendChild(removeBtn);
-        
+
         // Store attachment data for potential use
         attachmentDiv.dataset.url = data.url || '';
         attachmentDiv.dataset.content = data.content || '';
-        
+
         fragment.appendChild(attachmentDiv);
     }
 
@@ -788,13 +985,13 @@ class ChatbotSidebar {
         const boldRegex = /\*\*(.*?)\*\*/g;
         const italicRegex = /\*(.*?)\*/g;
         const codeRegex = /`([^`]+)`/g;
-        
+
         let lastIndex = 0;
         const matches = [];
-        
+
         // Collect all matches with their positions
         let match;
-        
+
         // Links
         while ((match = linkRegex.exec(text)) !== null) {
             matches.push({
@@ -805,7 +1002,7 @@ class ChatbotSidebar {
                 text: match[0]
             });
         }
-        
+
         // Bold
         boldRegex.lastIndex = 0;
         while ((match = boldRegex.exec(text)) !== null) {
@@ -817,7 +1014,7 @@ class ChatbotSidebar {
                 text: match[1]
             });
         }
-        
+
         // Code (process before italic to avoid conflicts)
         codeRegex.lastIndex = 0;
         while ((match = codeRegex.exec(text)) !== null) {
@@ -829,7 +1026,7 @@ class ChatbotSidebar {
                 text: match[1]
             });
         }
-        
+
         // Italic (but not if it's part of bold)
         italicRegex.lastIndex = 0;
         while ((match = italicRegex.exec(text)) !== null) {
@@ -845,21 +1042,21 @@ class ChatbotSidebar {
                 });
             }
         }
-        
+
         // Sort matches by position
         matches.sort((a, b) => a.start - b.start);
-        
+
         // Remove overlapping matches (keep the first one)
         const filteredMatches = [];
         let lastEnd = 0;
-        
+
         matches.forEach(match => {
             if (match.start >= lastEnd) {
                 filteredMatches.push(match);
                 lastEnd = match.end;
             }
         });
-        
+
         // Process text with formatting
         lastIndex = 0;
         filteredMatches.forEach(match => {
@@ -867,7 +1064,7 @@ class ChatbotSidebar {
             if (match.start > lastIndex) {
                 container.appendChild(document.createTextNode(text.substring(lastIndex, match.start)));
             }
-            
+
             // Add formatted element
             let element;
             switch (match.type) {
@@ -879,28 +1076,28 @@ class ChatbotSidebar {
                     element.className = 'external-link';
                     element.textContent = match.text;
                     break;
-                    
+
                 case 'bold':
                     element = document.createElement('strong');
                     element.textContent = match.text;
                     break;
-                    
+
                 case 'italic':
                     element = document.createElement('em');
                     element.textContent = match.text;
                     break;
-                    
+
                 case 'code':
                     element = document.createElement('code');
                     element.style.cssText = 'background: var(--bg-gray); padding: 2px 4px; border-radius: 3px; font-family: monospace;';
                     element.textContent = match.text;
                     break;
             }
-            
+
             container.appendChild(element);
             lastIndex = match.end;
         });
-        
+
         // Add remaining text
         if (lastIndex < text.length) {
             container.appendChild(document.createTextNode(text.substring(lastIndex)));
@@ -911,9 +1108,9 @@ class ChatbotSidebar {
      * Format time for display
      */
     formatTime(date) {
-        return date.toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+        return date.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
         });
     }
 
@@ -950,7 +1147,7 @@ class ChatbotSidebar {
      */
     toggleCategories() {
         const isCollapsed = this.categoryOptions.classList.contains('collapsed');
-        
+
         if (isCollapsed) {
             this.categoryOptions.classList.remove('collapsed');
         } else {
@@ -965,27 +1162,27 @@ class ChatbotSidebar {
         const button = event.currentTarget;
         const category = button.dataset.category;
         const icon = button.dataset.icon;
-        
+
         // Remove active class from all buttons
         this.sidebar.querySelectorAll('.ai-chatbot-category-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        
+
         // Add active class to selected button
         button.classList.add('active');
-        
+
         // Update selected category
         this.selectedCategory = category;
-        
+
         // Update header
         this.updateBotHeader(category, icon);
-        
+
         // Update selected category display
         this.updateSelectedCategoryDisplay(category);
-        
+
         // Save selection to storage
         this.saveCategorySelection(category);
-        
+
         // Update welcome message
         this.updateWelcomeMessage(category);
     }
@@ -995,7 +1192,7 @@ class ChatbotSidebar {
      */
     updateBotHeader(category, icon) {
         this.botAvatar.textContent = icon;
-        
+
         const categoryNames = {
             GENERAL: 'General AI',
             HR: 'HR Assistant',
@@ -1006,7 +1203,7 @@ class ChatbotSidebar {
             LEGAL: 'Legal Advisor',
             SECURITY: 'Security Specialist'
         };
-        
+
         this.botName.textContent = categoryNames[category] || 'AI Assistant';
     }
 
@@ -1015,7 +1212,7 @@ class ChatbotSidebar {
      */
     updateSelectedCategoryDisplay(category) {
         const selectedCategorySpan = this.sidebar.querySelector('.ai-chatbot-selected-category');
-        
+
         if (selectedCategorySpan) {
             const categoryDisplayNames = {
                 GENERAL: 'General',
@@ -1027,7 +1224,7 @@ class ChatbotSidebar {
                 LEGAL: 'Legal',
                 SECURITY: 'Security'
             };
-            
+
             selectedCategorySpan.textContent = categoryDisplayNames[category] || 'General';
         }
     }
@@ -1048,20 +1245,20 @@ class ChatbotSidebar {
                 LEGAL: '⚖️ Hello! I\'m your Legal advisor. I can help with legal questions and compliance.',
                 SECURITY: '🔒 Hello! I\'m your Security specialist. I can help with cybersecurity questions and security best practices.'
             };
-            
+
             const messageContent = categoryMessages[category] || categoryMessages.GENERAL;
-            
+
             // Clear existing content safely
             welcomeMessage.textContent = '';
-            
+
             // Create content elements safely
             const contentDiv = document.createElement('div');
             contentDiv.textContent = messageContent;
-            
+
             const timeDiv = document.createElement('div');
             timeDiv.className = 'ai-chatbot-message-time';
             timeDiv.textContent = 'Just now';
-            
+
             welcomeMessage.appendChild(contentDiv);
             welcomeMessage.appendChild(timeDiv);
         }
@@ -1089,7 +1286,7 @@ class ChatbotSidebar {
             chrome.runtime.sendMessage({ action: 'getData', key: 'selectedCategory' }, (response) => {
                 if (response && response.success) {
                     const savedCategory = response.data || 'GENERAL';
-                    
+
                     // Find and click the saved category button
                     const categoryButton = this.sidebar.querySelector(`[data-category="${savedCategory}"]`);
                     if (categoryButton) {
@@ -1115,7 +1312,7 @@ class ChatbotSidebar {
                 this.toggleButton.style.display = 'none';
                 this.toggleButton.style.opacity = '0';
                 console.log('[AI Chatbot] Toggle button hidden');
-                
+
                 // Also close sidebar if it's open
                 if (this.isOpen) {
                     this.closeSidebar();
@@ -1140,6 +1337,120 @@ class ChatbotSidebar {
     }
 
     /**
+     * Start resizing the sidebar
+     */
+    startResize(e) {
+        e.preventDefault();
+        this.isResizing = true;
+        this.startX = e.clientX;
+        this.startWidth = this.sidebar.offsetWidth;
+        
+        console.log('[AI Chatbot] Start resize:', {
+            startX: this.startX,
+            startWidth: this.startWidth
+        });
+        
+        // Add resizing class for visual feedback
+        this.resizeHandle.classList.add('resizing');
+        this.sidebar.classList.add('resizing');
+        document.body.classList.add('ai-chatbot-resizing');
+        
+        // Prevent text selection during resize
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+    }
+
+    /**
+     * Handle resize movement
+     */
+    handleResize(e) {
+        if (!this.isResizing) return;
+        
+        e.preventDefault();
+        
+        // Calculate new width (resize from left edge, so subtract movement)
+        const deltaX = this.startX - e.clientX;
+        const newWidth = Math.max(300, Math.min(800, this.startWidth + deltaX));
+        
+        console.log('[AI Chatbot] Resizing:', {
+            startX: this.startX,
+            clientX: e.clientX,
+            deltaX: deltaX,
+            startWidth: this.startWidth,
+            newWidth: newWidth
+        });
+        
+        // Update sidebar width with !important
+        this.sidebar.style.setProperty('width', `${newWidth}px`, 'important');
+        
+        // Update body margin if sidebar is open
+        if (this.isOpen) {
+            document.body.style.setProperty('margin-right', `${newWidth}px`, 'important');
+        }
+    }
+
+    /**
+     * Stop resizing the sidebar
+     */
+    stopResize(e) {
+        if (!this.isResizing) return;
+        
+        this.isResizing = false;
+        
+        // Remove resizing classes
+        this.resizeHandle.classList.remove('resizing');
+        this.sidebar.classList.remove('resizing');
+        document.body.classList.remove('ai-chatbot-resizing');
+        
+        // Restore normal cursor and text selection
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
+        
+        // Save the new width to settings
+        const newWidth = this.sidebar.offsetWidth;
+        this.saveSidebarWidth(newWidth);
+        
+        console.log('[AI Chatbot] Sidebar resized to:', newWidth + 'px');
+    }
+
+    /**
+     * Save sidebar width to settings
+     */
+    async saveSidebarWidth(width) {
+        try {
+            const settings = await this.loadSettingsFromStorage();
+            settings.sidebarWidth = width;
+            
+            chrome.runtime.sendMessage({
+                action: 'saveSettings',
+                data: settings
+            });
+        } catch (error) {
+            console.error('[AI Chatbot] Failed to save sidebar width:', error);
+        }
+    }
+
+    /**
+     * Load settings from storage (helper method)
+     */
+    async loadSettingsFromStorage() {
+        return new Promise((resolve) => {
+            chrome.runtime.sendMessage({ action: 'getSettings' }, (response) => {
+                if (response && response.success) {
+                    resolve(response.data);
+                } else {
+                    resolve({
+                        webhookUrl: '',
+                        timeout: 30,
+                        saveHistory: true,
+                        sidebarWidth: 400
+                    });
+                }
+            });
+        });
+    }
+
+    /**
      * Add current page HTML to chat
      */
     async addPageHtml() {
@@ -1148,7 +1459,7 @@ class ChatbotSidebar {
             const pageHtml = this.getPageHtml();
             const pageTitle = document.title;
             const pageUrl = window.location.href;
-            
+
             // Create attachment data
             const attachmentData = {
                 icon: '🌐',
@@ -1157,16 +1468,23 @@ class ChatbotSidebar {
                 url: pageUrl,
                 content: pageHtml
             };
-            
+
             // Add attachment to the attachments area
             this.addAttachmentToInput(attachmentData);
-            
+
             // Clear input and focus for user question
             this.messageInput.value = '';
             this.messageInput.placeholder = 'Ask a question about this page...';
             this.handleInputChange();
             this.messageInput.focus();
-            
+
+            // Show success feedback
+            console.log('[AI Chatbot] Page HTML attached successfully:', {
+                title: pageTitle,
+                contentLength: pageHtml.length,
+                url: pageUrl
+            });
+
         } catch (error) {
             console.error('[AI Chatbot] Failed to add page HTML:', error);
             this.addMessage(`Error getting page HTML: ${error.message}`, 'bot', true);
@@ -1180,26 +1498,26 @@ class ChatbotSidebar {
         // Create attachment element
         const attachmentDiv = document.createElement('div');
         attachmentDiv.className = 'ai-chatbot-input-attachment';
-        
+
         // Create attachment content
         const iconDiv = document.createElement('div');
         iconDiv.className = 'ai-chatbot-input-attachment-icon';
         iconDiv.textContent = attachmentData.icon || '📄';
-        
+
         const contentDiv = document.createElement('div');
         contentDiv.className = 'ai-chatbot-input-attachment-content';
-        
+
         const filenameDiv = document.createElement('div');
         filenameDiv.className = 'ai-chatbot-input-attachment-filename';
         filenameDiv.textContent = attachmentData.filename || 'Untitled';
-        
+
         const typeDiv = document.createElement('div');
         typeDiv.className = 'ai-chatbot-input-attachment-type';
         typeDiv.textContent = attachmentData.type || 'FILE';
-        
+
         contentDiv.appendChild(filenameDiv);
         contentDiv.appendChild(typeDiv);
-        
+
         // Add remove button
         const removeBtn = document.createElement('button');
         removeBtn.className = 'ai-chatbot-input-attachment-remove';
@@ -1208,21 +1526,24 @@ class ChatbotSidebar {
         removeBtn.addEventListener('click', () => {
             this.removeAttachmentFromInput(attachmentDiv);
         });
-        
+
         attachmentDiv.appendChild(iconDiv);
         attachmentDiv.appendChild(contentDiv);
         attachmentDiv.appendChild(removeBtn);
-        
+
         // Store attachment data
         attachmentDiv.dataset.url = attachmentData.url || '';
         attachmentDiv.dataset.content = attachmentData.content || '';
         attachmentDiv.dataset.filename = attachmentData.filename || '';
         attachmentDiv.dataset.type = attachmentData.type || '';
         attachmentDiv.dataset.icon = attachmentData.icon || '';
-        
+
         // Add to attachments area
         this.attachmentsArea.appendChild(attachmentDiv);
         this.attachmentsArea.style.display = 'block';
+
+        // Update input state after adding attachment
+        this.handleInputChange();
     }
 
     /**
@@ -1230,12 +1551,15 @@ class ChatbotSidebar {
      */
     removeAttachmentFromInput(attachmentElement) {
         attachmentElement.remove();
-        
+
         // Hide attachments area if no attachments left
         if (this.attachmentsArea.children.length === 0) {
             this.attachmentsArea.style.display = 'none';
             this.messageInput.placeholder = 'Type your message...';
         }
+
+        // Update input state after removing attachment
+        this.handleInputChange();
     }
 
     /**
@@ -1254,13 +1578,13 @@ class ChatbotSidebar {
     getPageHtml() {
         try {
             let extractedContent = '';
-            
+
             // Strategy 1: Try to find main content containers
             const mainContentSelectors = [
                 'main', 'article', '[role="main"]', '.content', '.main-content',
                 '#content', '#main', '.post-content', '.entry-content'
             ];
-            
+
             for (const selector of mainContentSelectors) {
                 const element = document.querySelector(selector);
                 if (element) {
@@ -1270,25 +1594,25 @@ class ChatbotSidebar {
                     }
                 }
             }
-            
+
             // Strategy 2: If main content is insufficient, try comprehensive extraction
             if (!extractedContent || extractedContent.length < 100) {
                 extractedContent = this.extractComprehensiveContent();
             }
-            
+
             // Strategy 3: If still insufficient, extract from meta tags and structured data
             if (!extractedContent || extractedContent.length < 50) {
                 extractedContent = this.extractFromMetaAndStructuredData();
             }
-            
-            // Limit the content length
-            const maxLength = 2500;
+
+            // Limit the content length (considering attachment tags and user message)
+            const maxLength = 1800; // Reduced to leave room for attachment tags and user message
             if (extractedContent.length > maxLength) {
                 extractedContent = extractedContent.substring(0, maxLength) + '\n... (content truncated due to length)';
             }
-            
+
             return extractedContent || 'No meaningful content found on this page.';
-            
+
         } catch (error) {
             console.error('[AI Chatbot] Error getting page HTML:', error);
             return 'Error: Could not extract page content.';
@@ -1310,23 +1634,23 @@ class ChatbotSidebar {
             [id*="title"], [id*="name"], [id*="desc"],
             [id*="info"], [id*="content"], [id*="text"]
         `);
-        
+
         const textParts = [];
         const seenTexts = new Set(); // Avoid duplicates
-        
+
         contentElements.forEach(el => {
             const text = el.textContent.trim();
-            if (text && 
-                text.length > 10 && 
+            if (text &&
+                text.length > 10 &&
                 text.length < 500 && // Avoid very long texts
                 !this.isLikelyNonContent(text) &&
                 !seenTexts.has(text)) {
-                
+
                 seenTexts.add(text);
                 textParts.push(text);
             }
         });
-        
+
         return textParts.slice(0, 50).join('\n\n');
     }
 
@@ -1335,20 +1659,20 @@ class ChatbotSidebar {
      */
     extractFromMetaAndStructuredData() {
         const contentParts = [];
-        
+
         // Extract from meta tags
         const title = document.querySelector('title')?.textContent?.trim();
         if (title) contentParts.push(`제목: ${title}`);
-        
+
         const description = document.querySelector('meta[name="description"]')?.getAttribute('content')?.trim();
         if (description) contentParts.push(`설명: ${description}`);
-        
+
         const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute('content')?.trim();
         if (ogTitle && ogTitle !== title) contentParts.push(`페이지 제목: ${ogTitle}`);
-        
+
         const ogDescription = document.querySelector('meta[property="og:description"]')?.getAttribute('content')?.trim();
         if (ogDescription && ogDescription !== description) contentParts.push(`페이지 설명: ${ogDescription}`);
-        
+
         // Extract from JSON-LD structured data
         const jsonLdScripts = document.querySelectorAll('script[type="application/ld+json"]');
         jsonLdScripts.forEach(script => {
@@ -1365,19 +1689,19 @@ class ChatbotSidebar {
                 // Ignore JSON parsing errors
             }
         });
-        
+
         // Extract from form inputs and hidden fields (for e-commerce sites)
         const hiddenInputs = document.querySelectorAll('input[type="hidden"]');
         hiddenInputs.forEach(input => {
             const name = input.name;
             const value = input.value;
-            if (name && value && 
+            if (name && value &&
                 (name.includes('item') || name.includes('product') || name.includes('name')) &&
                 value.length > 2 && value.length < 100) {
                 contentParts.push(`${name}: ${value}`);
             }
         });
-        
+
         return contentParts.join('\n');
     }
 
@@ -1399,14 +1723,14 @@ class ChatbotSidebar {
             /^\s*$/, // Empty or whitespace only
             /^(새창|새창 열림|팝업|레이어|모달)$/i
         ];
-        
+
         // Skip very short texts that are likely UI elements
         if (text.length < 3) return true;
-        
+
         // Skip texts that are mostly punctuation
         const alphanumericCount = (text.match(/[a-zA-Z0-9가-힣]/g) || []).length;
         if (alphanumericCount / text.length < 0.5) return true;
-        
+
         return nonContentPatterns.some(pattern => pattern.test(text.trim()));
     }
 
@@ -1416,32 +1740,32 @@ class ChatbotSidebar {
     extractTextContent(element) {
         // Clone to avoid modifying original
         const clone = element.cloneNode(true);
-        
+
         // Remove unwanted elements
         const unwantedSelectors = [
-            'script', 'style', 'nav', 'header', 'footer', 
+            'script', 'style', 'nav', 'header', 'footer',
             '.advertisement', '.ads', '.sidebar', '.menu',
             '.ai-chatbot-sidebar', '.ai-chatbot-toggle',
             '.social-share', '.comments', '.related-posts',
             '.newsletter', '.subscription', '.popup', '.modal',
             'button', 'input', 'form', '.btn', '.button'
         ];
-        
+
         unwantedSelectors.forEach(selector => {
             const elements = clone.querySelectorAll(selector);
             elements.forEach(el => el.remove());
         });
-        
+
         // Get text content and clean it up
         let text = clone.textContent || clone.innerText || '';
-        
+
         // Clean up whitespace and preserve paragraph structure
         text = text
             .replace(/\s+/g, ' ')           // Multiple spaces to single space
             .replace(/\n\s*\n/g, '\n\n')    // Preserve paragraph breaks
             .replace(/\n\s+/g, '\n')        // Remove leading spaces on new lines
             .trim();
-            
+
         return text;
     }
 }

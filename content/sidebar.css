@@ -20,7 +20,9 @@
     position: fixed !important;
     top: 0 !important;
     right: 0 !important;
-    width: 400px !important;
+    width: 400px;
+    min-width: 300px !important;
+    max-width: 800px !important;
     height: 100vh !important;
     background: #ffffff !important;
     border-left: 1px solid #e2e8f0 !important;
@@ -35,16 +37,49 @@
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
+    resize: none !important; /* Disable default resize */
 }
 
 .ai-chatbot-sidebar.open {
     transform: translateX(0) !important;
 }
 
+/* Resize Handle */
+.ai-chatbot-resize-handle {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 10px !important;
+    height: 100% !important;
+    background: transparent !important;
+    cursor: col-resize !important;
+    z-index: 2147483647 !important; /* Maximum z-index */
+    border-left: 2px solid transparent !important;
+    transition: border-color 0.2s ease !important;
+}
+
+.ai-chatbot-resize-handle:hover {
+    border-left-color: #667eea !important;
+    background: rgba(102, 126, 234, 0.1) !important;
+}
+
+.ai-chatbot-resize-handle.resizing {
+    border-left-color: #667eea !important;
+    background: rgba(102, 126, 234, 0.1) !important;
+}
+
 /* Adjust page body when sidebar is open */
 body.ai-chatbot-sidebar-open {
-    margin-right: 400px !important;
     transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Disable transitions during resize */
+body.ai-chatbot-resizing {
+    transition: none !important;
+}
+
+.ai-chatbot-sidebar.resizing {
+    transition: none !important;
 }
 
 /* Toggle Button */

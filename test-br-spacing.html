@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BR 태그 과다 생성 문제 테스트</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .problem-example {
+            background: #ffebee;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #f44336;
+        }
+        .solution-example {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .test-request {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 BR 태그 과다 생성 문제 수정 테스트</h1>
+    
+    <div class="test-section">
+        <h2>문제 상황</h2>
+        <div class="problem-example">
+            <h3>❌ 수정 전 (과도한 빈 줄)</h3>
+            <p>AI 응답에서 다음과 같은 문제 발생:</p>
+            <ul>
+                <li>모든 줄 뒤에 &lt;br&gt; 태그 생성</li>
+                <li>헤더, 리스트, 테이블 뒤에도 불필요한 &lt;br&gt;</li>
+                <li>결과적으로 과도한 빈 줄 공간</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>테스트 1: 일반 텍스트 응답</h2>
+        <div class="test-request">
+            <p><strong>AI에게 요청:</strong></p>
+            <blockquote>
+                "안녕하세요. 오늘 날씨가 좋네요. 산책하기 좋은 날입니다."
+            </blockquote>
+        </div>
+        
+        <div class="solution-example">
+            <h3>✅ 예상 결과 (수정 후)</h3>
+            <p>연속된 텍스트 줄 사이에만 적절한 간격</p>
+            <p>과도한 빈 줄 없이 자연스러운 문단 구성</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>테스트 2: 혼합 콘텐츠 응답</h2>
+        <div class="test-request">
+            <p><strong>AI에게 요청:</strong></p>
+            <blockquote>
+                "다음 내용을 정리해주세요:<br>
+                1. 제목과 설명<br>
+                2. 리스트 형태로<br>
+                3. 표도 포함해서"
+            </blockquote>
+        </div>
+        
+        <div class="solution-example">
+            <h3>✅ 예상 결과</h3>
+            <ul>
+                <li>헤더(#) 뒤에 불필요한 빈 줄 없음</li>
+                <li>리스트 항목들 사이 적절한 간격</li>
+                <li>테이블 앞뒤 적절한 여백</li>
+                <li>전체적으로 깔끔한 레이아웃</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>테스트 3: 복잡한 마크다운 응답</h2>
+        <div class="test-request">
+            <p><strong>AI에게 요청:</strong></p>
+            <blockquote>
+                "프로젝트 계획을 다음 형식으로 작성해주세요:<br>
+                - 제목<br>
+                - 목표 리스트<br>
+                - 일정 표<br>
+                - 상세 설명"
+            </blockquote>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 적용된 수정사항</h2>
+        <ul>
+            <li><strong>조건부 BR 생성</strong>: 연속된 일반 텍스트 줄 사이에만 &lt;br&gt; 추가</li>
+            <li><strong>특수 요소 제외</strong>: 헤더(#), 리스트(*, -, +), 테이블(|) 뒤 &lt;br&gt; 제거</li>
+            <li><strong>다음 줄 확인</strong>: 다음 줄이 특수 요소면 &lt;br&gt; 생성 안함</li>
+            <li><strong>Details 태그 개선</strong>: details 내부에서도 조건부 &lt;br&gt; 생성</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>📋 확인 사항</h2>
+        <ol>
+            <li><strong>일반 텍스트</strong>: 문단 사이 적절한 간격</li>
+            <li><strong>헤더</strong>: 헤더 뒤 과도한 빈 줄 없음</li>
+            <li><strong>리스트</strong>: 리스트 항목들 사이 적절한 간격</li>
+            <li><strong>테이블</strong>: 테이블 앞뒤 적절한 여백</li>
+            <li><strong>혼합 콘텐츠</strong>: 전체적으로 균형잡힌 레이아웃</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 디버깅 방법</h2>
+        <ol>
+            <li>F12 → Elements 탭에서 메시지 내용 검사</li>
+            <li>&lt;br&gt; 태그 개수 확인</li>
+            <li>연속된 &lt;br&gt; 태그가 있는지 확인</li>
+            <li>특수 요소(헤더, 리스트, 테이블) 뒤 &lt;br&gt; 확인</li>
+        </ol>
+    </div>
+
+    <script>
+        console.log('🔧 BR 태그 과다 생성 문제 테스트 페이지 로드됨');
+        
+        // BR 태그 모니터링
+        setInterval(() => {
+            const messages = document.querySelectorAll('.ai-chatbot-message.bot .ai-chatbot-message-content');
+            if (messages.length > 0) {
+                const lastMessage = messages[messages.length - 1];
+                const brTags = lastMessage.querySelectorAll('br');
+                const textNodes = Array.from(lastMessage.childNodes).filter(node => 
+                    node.nodeType === Node.TEXT_NODE && node.textContent.trim()
+                );
+                
+                console.log('📊 메시지 분석:', {
+                    BR태그수: brTags.length,
+                    텍스트노드수: textNodes.length,
+                    BR비율: brTags.length / Math.max(textNodes.length, 1)
+                });
+                
+                // BR 비율이 너무 높으면 경고
+                if (brTags.length > textNodes.length) {
+                    console.warn('⚠️ BR 태그가 과도하게 많습니다!');
+                }
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

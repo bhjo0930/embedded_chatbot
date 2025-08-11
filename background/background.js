@@ -418,6 +418,8 @@ async function initializeDefaultSettings() {
             notifications: true,
             autoScroll: true,
             showToggleButton: true,
+            showHtmlButton: true,
+            sidebarWidth: 400,
             customHeaders: '',
             version: '0.7.0'
         };
@@ -627,6 +629,7 @@ async function getDefaultSettings() {
         autoScroll: true,
         showToggleButton: true,
         showHtmlButton: true,
+        sidebarWidth: 400,
         customHeaders: '',
         version: '0.7.0'
     };
@@ -668,6 +671,7 @@ function validateSettings(settings) {
         autoScroll: true,
         showToggleButton: true,
         showHtmlButton: true,
+        sidebarWidth: 400,
         customHeaders: '',
         version: '0.7.0'
     };
@@ -711,6 +715,11 @@ function validateSettings(settings) {
     // Validate custom headers
     if (settings.customHeaders && typeof settings.customHeaders === 'string') {
         validated.customHeaders = settings.customHeaders.trim();
+    }
+
+    // Validate sidebar width
+    if (settings.sidebarWidth && typeof settings.sidebarWidth === 'number') {
+        validated.sidebarWidth = Math.max(300, Math.min(800, settings.sidebarWidth));
     }
 
     // Validate boolean settings
