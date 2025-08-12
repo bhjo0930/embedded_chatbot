@@ -117,8 +117,7 @@ class UnifiedApiClient {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    ...this.parseCustomHeaders()
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(payload),
                 signal: controller.signal
@@ -174,17 +173,6 @@ class UnifiedApiClient {
         }
     }
 
-    parseCustomHeaders() {
-        if (!this.settings.customHeaders) {
-            return {};
-        }
-        try {
-            return JSON.parse(this.settings.customHeaders);
-        } catch (error) {
-            console.warn('Invalid custom headers JSON:', error);
-            return {};
-        }
-    }
 
     async testConnection() {
         if (this.backend === 'ollama') {
@@ -262,8 +250,7 @@ class UnifiedApiClient {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    ...this.parseCustomHeaders()
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(testPayload),
                 signal: controller.signal
@@ -420,7 +407,17 @@ async function initializeDefaultSettings() {
             showToggleButton: true,
             showHtmlButton: true,
             sidebarWidth: 400,
-            customHeaders: '',
+            allowPrivateNetwork: true,
+            visibleCategories: {
+                GENERAL: true,
+                HR: false,
+                IT: false,
+                DATA: false,
+                FINANCE: false,
+                MARKETING: false,
+                LEGAL: false,
+                SECURITY: false
+            },
             version: '0.7.0'
         };
 
@@ -630,7 +627,17 @@ async function getDefaultSettings() {
         showToggleButton: true,
         showHtmlButton: true,
         sidebarWidth: 400,
-        customHeaders: '',
+        allowPrivateNetwork: true,
+        visibleCategories: {
+            GENERAL: true,
+            HR: false,
+            IT: false,
+            DATA: false,
+            FINANCE: false,
+            MARKETING: false,
+            LEGAL: false,
+            SECURITY: false
+        },
         version: '0.7.0'
     };
 
@@ -672,7 +679,17 @@ function validateSettings(settings) {
         showToggleButton: true,
         showHtmlButton: true,
         sidebarWidth: 400,
-        customHeaders: '',
+        allowPrivateNetwork: true,
+        visibleCategories: {
+            GENERAL: true,
+            HR: false,
+            IT: false,
+            DATA: false,
+            FINANCE: false,
+            MARKETING: false,
+            LEGAL: false,
+            SECURITY: false
+        },
         version: '0.7.0'
     };
 
@@ -683,17 +700,28 @@ function validateSettings(settings) {
         validated.backend = settings.backend;
     }
 
+    // Get allowPrivateNetwork setting
+    const allowPrivateNetwork = typeof settings.allowPrivateNetwork === 'boolean' ? 
+        settings.allowPrivateNetwork : true;
+    
+    // Validate boolean settings first to get allowPrivateNetwork
+    ['saveHistory', 'notifications', 'autoScroll', 'showToggleButton', 'showHtmlButton', 'allowPrivateNetwork'].forEach(key => {
+        if (typeof settings[key] === 'boolean') {
+            validated[key] = settings[key];
+        }
+    });
+
     // Validate URLs
     if (settings.webhookUrl && typeof settings.webhookUrl === 'string') {
         const url = settings.webhookUrl.trim();
-        if (url && isValidUrl(url)) {
+        if (url && isValidUrl(url, validated.allowPrivateNetwork)) {
             validated.webhookUrl = url;
         }
     }
 
     if (settings.ollamaUrl && typeof settings.ollamaUrl === 'string') {
         const url = settings.ollamaUrl.trim();
-        if (url && isValidUrl(url)) {
+        if (url && isValidUrl(url, validated.allowPrivateNetwork)) {
             validated.ollamaUrl = url;
         }
     }
@@ -712,41 +740,133 @@ function validateSettings(settings) {
         validated.timeout = Math.max(5, Math.min(600, settings.timeout));
     }
 
-    // Validate custom headers
-    if (settings.customHeaders && typeof settings.customHeaders === 'string') {
-        validated.customHeaders = settings.customHeaders.trim();
-    }
 
     // Validate sidebar width
     if (settings.sidebarWidth && typeof settings.sidebarWidth === 'number') {
         validated.sidebarWidth = Math.max(300, Math.min(800, settings.sidebarWidth));
     }
 
-    // Validate boolean settings
-    ['saveHistory', 'notifications', 'autoScroll', 'showToggleButton', 'showHtmlButton'].forEach(key => {
-        if (typeof settings[key] === 'boolean') {
-            validated[key] = settings[key];
-        }
-    });
 
     // Validate theme
     if (settings.theme && ['light', 'dark', 'auto'].includes(settings.theme)) {
         validated.theme = settings.theme;
     }
 
+    // Validate visible categories
+    if (settings.visibleCategories && typeof settings.visibleCategories === 'object') {
+        const categories = ['GENERAL', 'HR', 'IT', 'DATA', 'FINANCE', 'MARKETING', 'LEGAL', 'SECURITY'];
+        const visibleCategories = { ...defaults.visibleCategories };
+        let hasVisible = false;
+        
+        categories.forEach(category => {
+            if (typeof settings.visibleCategories[category] === 'boolean') {
+                visibleCategories[category] = settings.visibleCategories[category];
+                if (settings.visibleCategories[category]) {
+                    hasVisible = true;
+                }
+            }
+        });
+        
+        // Ensure at least one category is visible
+        if (!hasVisible) {
+            visibleCategories.GENERAL = true;
+        }
+        
+        validated.visibleCategories = visibleCategories;
+    }
+
     return validated;
 }
 
 /**
- * Validate URL format
+ * Validate URL format and security.
+ * Prevents requests to private, loopback, or reserved IP addresses.
  */
-function isValidUrl(string) {
+function isValidUrl(string, allowPrivateNetwork = true) {
     try {
         const url = new URL(string);
-        return url.protocol === 'http:' || url.protocol === 'https:';
+
+        // 1. Protocol check
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            return false;
+        }
+
+        // 2. Hostname check - only if private network is not allowed
+        if (!allowPrivateNetwork) {
+            const hostname = url.hostname;
+
+            // Disallow IP addresses in private ranges to prevent SSRF
+            if (isPrivateIP(hostname)) {
+                console.warn(`Blocked request to private IP: ${hostname}`);
+                return false;
+            }
+        }
+
+        return true;
     } catch {
         return false;
     }
+}
+
+/**
+ * Checks if a given string is a private, loopback, or reserved IP address.
+ * Now includes whitelist for specific allowed private IP ranges.
+ * @param {string} ip - The IP address string to check.
+ * @returns {boolean} - True if the IP is private and NOT whitelisted, false otherwise.
+ */
+function isPrivateIP(ip) {
+    if (!/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(ip)) {
+        // It's not an IPv4 address, could be a domain name.
+        // We allow domain names here and would rely on DNS resolution
+        // in a more advanced implementation.
+        // A simple check for localhost is still valuable.
+        return ip.toLowerCase() === 'localhost';
+    }
+
+    const parts = ip.split('.').map(part => parseInt(part, 10));
+
+    // Whitelist specific IP ranges that should be allowed
+    // Allow 172.16.x.x subnet
+    if (parts[0] === 172 && parts[1] === 16) {
+        return false; // Allow this specific range
+    }
+
+    // Allow 10.41.x.x subnet
+    if (parts[0] === 10 && parts[1] === 41) {
+        return false; // Allow this specific range
+    }
+
+    // Check for loopback address (127.0.0.0/8)
+    if (parts[0] === 127) {
+        return true;
+    }
+
+    // Check for private class A (10.0.0.0/8) - but exclude whitelisted 10.41.x.x
+    if (parts[0] === 10) {
+        return true;
+    }
+
+    // Check for private class B (172.16.0.0/12) - but exclude whitelisted 172.16.x.x
+    if (parts[0] === 172 && (parts[1] >= 16 && parts[1] <= 31)) {
+        return true;
+    }
+
+    // Check for private class C (192.168.0.0/16)
+    if (parts[0] === 192 && parts[1] === 168) {
+        return true;
+    }
+
+    // Check for Carrier-grade NAT (100.64.0.0/10)
+    if (parts[0] === 100 && (parts[1] >= 64 && parts[1] <= 127)) {
+        return true;
+    }
+
+    // Check for broadcast address
+    if (ip === '255.255.255.255') {
+        return true;
+    }
+
+    return false;
 }
 
 /**

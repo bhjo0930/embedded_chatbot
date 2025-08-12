@@ -52,8 +52,20 @@ class OptionsPage {
         this.showHtmlButtonCheckbox = document.getElementById('show-html-button');
         this.themeSelect = document.getElementById('theme');
         this.sessionDurationInput = document.getElementById('session-duration');
+        this.allowPrivateNetworkCheckbox = document.getElementById('allow-private-network');
         this.debugModeCheckbox = document.getElementById('debug-mode');
-        this.customHeadersTextarea = document.getElementById('custom-headers');
+        
+        // Category checkboxes
+        this.categoryCheckboxes = {
+            general: document.getElementById('category-general'),
+            hr: document.getElementById('category-hr'),
+            it: document.getElementById('category-it'),
+            data: document.getElementById('category-data'),
+            finance: document.getElementById('category-finance'),
+            marketing: document.getElementById('category-marketing'),
+            legal: document.getElementById('category-legal'),
+            security: document.getElementById('category-security')
+        };
         
         // Backend-specific sections
         this.n8nSettings = document.getElementById('n8n-settings');
@@ -97,8 +109,7 @@ class OptionsPage {
             this.temperatureInput,
             this.timeoutInput,
             this.maxRetriesInput,
-            this.sessionDurationInput,
-            this.customHeadersTextarea
+            this.sessionDurationInput
         ].forEach(element => {
             if (element) {
                 element.addEventListener('input', this.handleFormChange.bind(this));
@@ -112,6 +123,7 @@ class OptionsPage {
             this.notificationsCheckbox,
             this.showToggleButtonCheckbox,
             this.showHtmlButtonCheckbox,
+            this.allowPrivateNetworkCheckbox,
             this.debugModeCheckbox
         ].forEach(element => {
             if (element) {
@@ -253,9 +265,6 @@ class OptionsPage {
             case 'session-duration':
                 this.validateSessionDuration(field, value);
                 break;
-            case 'custom-headers':
-                this.validateCustomHeaders(field, value);
-                break;
         }
     }
 
@@ -317,21 +326,6 @@ class OptionsPage {
         return isValid;
     }
 
-    /**
-     * Validate custom headers JSON
-     */
-    validateCustomHeaders(field, value) {
-        if (!value) return true;
-        
-        try {
-            JSON.parse(value);
-            this.setFieldValidation(field, true);
-            return true;
-        } catch (error) {
-            this.setFieldValidation(field, false, 'Invalid JSON format');
-            return false;
-        }
-    }
 
     /**
      * Set field validation state
@@ -367,7 +361,6 @@ class OptionsPage {
         // Validate based on selected backend
         if (backend === 'n8n') {
             isValid = this.validateWebhookUrl(this.webhookUrlInput, this.webhookUrlInput.value.trim()) && isValid;
-            isValid = this.validateCustomHeaders(this.customHeadersTextarea, this.customHeadersTextarea.value.trim()) && isValid;
         } else if (backend === 'ollama') {
             isValid = this.validateOllamaUrl(this.ollamaUrlInput, this.ollamaUrlInput.value.trim()) && isValid;
             isValid = this.validateTemperature(this.temperatureInput, this.temperatureInput.value) && isValid;
@@ -427,8 +420,8 @@ class OptionsPage {
             notifications: true,
             theme: 'light',
             sessionDuration: 24,
+            allowPrivateNetwork: true,
             debugMode: false,
-            customHeaders: '',
             version: '0.7.0'
         };
     }
@@ -443,7 +436,6 @@ class OptionsPage {
         
         // n8n settings
         this.webhookUrlInput.value = settings.webhookUrl || '';
-        this.customHeadersTextarea.value = settings.customHeaders || '';
         
         // Ollama settings
         if (this.ollamaUrlInput) {
@@ -463,6 +455,7 @@ class OptionsPage {
         this.showHtmlButtonCheckbox.checked = settings.showHtmlButton !== false;
         this.themeSelect.value = settings.theme || 'light';
         this.sessionDurationInput.value = settings.sessionDuration || 24;
+        this.allowPrivateNetworkCheckbox.checked = settings.allowPrivateNetwork !== false;
         this.debugModeCheckbox.checked = settings.debugMode === true;
         
         // Load Ollama models if backend is Ollama
@@ -476,6 +469,65 @@ class OptionsPage {
         
         // Apply theme
         this.applyTheme(settings.theme || 'light');
+        
+        // Populate category checkboxes
+        this.populateCategories(settings);
+    }
+
+    /**
+     * Populate category checkboxes
+     */
+    populateCategories(settings) {
+        const visibleCategories = settings.visibleCategories || {
+            GENERAL: true,
+            HR: false,
+            IT: false,
+            DATA: false,
+            FINANCE: false,
+            MARKETING: false,
+            LEGAL: false,
+            SECURITY: false
+        };
+
+        const mapping = {
+            general: 'GENERAL',
+            hr: 'HR',
+            it: 'IT',
+            data: 'DATA',
+            finance: 'FINANCE',
+            marketing: 'MARKETING',
+            legal: 'LEGAL',
+            security: 'SECURITY'
+        };
+
+        Object.entries(mapping).forEach(([key, category]) => {
+            if (this.categoryCheckboxes[key]) {
+                this.categoryCheckboxes[key].checked = visibleCategories[category];
+            }
+        });
+        
+        // Add change event listeners
+        Object.values(this.categoryCheckboxes).forEach(checkbox => {
+            if (checkbox) {
+                checkbox.addEventListener('change', this.handleCategoryChange.bind(this));
+            }
+        });
+    }
+
+    /**
+     * Handle category checkbox changes
+     */
+    handleCategoryChange() {
+        const checkedCount = Object.values(this.categoryCheckboxes).filter(cb => cb && cb.checked).length;
+        
+        // Prevent unchecking if only one category is selected
+        if (checkedCount === 0) {
+            // Re-check the general category as default
+            if (this.categoryCheckboxes.general) {
+                this.categoryCheckboxes.general.checked = true;
+            }
+            this.showToast('At least one category must be selected', 'warning');
+        }
     }
 
     /**
@@ -515,17 +567,17 @@ class OptionsPage {
      * Gather form data
      */
     gatherFormData() {
-        const customHeaders = this.customHeadersTextarea.value.trim();
-        let parsedHeaders = '';
-        
-        if (customHeaders) {
-            try {
-                // Validate and format JSON
-                parsedHeaders = JSON.stringify(JSON.parse(customHeaders));
-            } catch (error) {
-                parsedHeaders = '';
-            }
-        }
+        // Gather category visibility data
+        const visibleCategories = {
+            GENERAL: this.categoryCheckboxes.general?.checked || false,
+            HR: this.categoryCheckboxes.hr?.checked || false,
+            IT: this.categoryCheckboxes.it?.checked || false,
+            DATA: this.categoryCheckboxes.data?.checked || false,
+            FINANCE: this.categoryCheckboxes.finance?.checked || false,
+            MARKETING: this.categoryCheckboxes.marketing?.checked || false,
+            LEGAL: this.categoryCheckboxes.legal?.checked || false,
+            SECURITY: this.categoryCheckboxes.security?.checked || false
+        };
 
         return {
             backend: this.backendSelect.value,
@@ -542,8 +594,9 @@ class OptionsPage {
             showHtmlButton: this.showHtmlButtonCheckbox.checked,
             theme: this.themeSelect.value,
             sessionDuration: Math.max(1, Math.min(168, parseInt(this.sessionDurationInput.value) || 24)),
+            allowPrivateNetwork: this.allowPrivateNetworkCheckbox.checked,
             debugMode: this.debugModeCheckbox.checked,
-            customHeaders: parsedHeaders,
+            visibleCategories: visibleCategories,
             version: '0.7.0'
         };
     }

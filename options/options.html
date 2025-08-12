@@ -67,16 +67,6 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="custom-headers">
-                        <strong>Custom Headers (JSON)</strong>
-                    </label>
-                    <textarea id="custom-headers" placeholder='{"Authorization": "Bearer token", "X-Custom": "value"}'
-                        rows="3"></textarea>
-                    <div class="form-help">
-                        Optional custom headers to send with webhook requests
-                    </div>
-                </div>
             </section>
 
             <!-- Ollama Connection Settings -->
@@ -169,6 +159,67 @@
                         Test Connection
                     </button>
                     <div id="connection-result" class="connection-result"></div>
+                </div>
+            </section>
+
+            <!-- Category Settings -->
+            <section class="settings-section">
+                <div class="section-header">
+                    <h2>🏷️ Category Settings</h2>
+                    <p>Choose which category buttons to display in the chatbot interface</p>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <strong>Visible Category Buttons</strong>
+                    </label>
+                    <div class="category-checkboxes">
+                        <div class="checkbox-grid">
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="category-general" checked>
+                                <span class="category-icon">🤖</span>
+                                <span>General</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="category-hr">
+                                <span class="category-icon">👥</span>
+                                <span>HR</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="category-it">
+                                <span class="category-icon">💻</span>
+                                <span>IT</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="category-data">
+                                <span class="category-icon">📊</span>
+                                <span>Data</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="category-finance">
+                                <span class="category-icon">💰</span>
+                                <span>Finance</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="category-marketing">
+                                <span class="category-icon">📢</span>
+                                <span>Marketing</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="category-legal">
+                                <span class="category-icon">⚖️</span>
+                                <span>Legal</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="category-security">
+                                <span class="category-icon">🔒</span>
+                                <span>Security</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-help">
+                        Select which category buttons to show in the chatbot interface. At least one category must be selected.
+                    </div>
                 </div>
             </section>
 
@@ -305,6 +356,17 @@
                     <div class="form-help">
                         How long to keep chat sessions active
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="allow-private-network" checked>
+                        <span class="checkbox-custom"></span>
+                        <div class="checkbox-content">
+                            <strong>Allow Private Network Access</strong>
+                            <div class="form-help">Allow connections to private IP addresses (localhost, 192.168.x.x, etc.)</div>
+                        </div>
+                    </label>
                 </div>
 
                 <div class="form-group">
