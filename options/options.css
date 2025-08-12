@@ -984,3 +984,58 @@ ama-specific styles */
         padding: 0;
     }
 }
+
+/* Category Settings Styles */
+.category-checkboxes {
+    margin-top: 8px;
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: var(--bg-primary);
+}
+
+.checkbox-item:hover {
+    border-color: var(--accent-primary);
+    background-color: var(--bg-secondary);
+}
+
+.checkbox-item input[type="checkbox"] {
+    margin: 0;
+}
+
+.checkbox-item input[type="checkbox"]:checked + .category-icon + span {
+    font-weight: 500;
+    color: var(--accent-primary);
+}
+
+.checkbox-item .category-icon {
+    font-size: 16px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.checkbox-item:has(input:checked) {
+    border-color: var(--accent-primary);
+    background-color: var(--info-bg);
+}
+
+/* Ensure at least one category is always selected */
+.checkbox-item input[type="checkbox"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

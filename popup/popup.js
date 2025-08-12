@@ -93,11 +93,7 @@ class ChatbotPopup {
         // Category selection events
         this.categoryToggle.addEventListener('click', this.toggleCategoryOptions.bind(this));
         
-        // Category button events
-        const categoryButtons = document.querySelectorAll('.category-btn');
-        categoryButtons.forEach(btn => {
-            btn.addEventListener('click', this.selectCategory.bind(this));
-        });
+        // Category button events will be added dynamically in populateCategories()
     }
 
     /**
@@ -941,6 +937,12 @@ class ChatbotPopup {
             const categoryButton = document.querySelector(`[data-category="${savedCategory}"]`);
             if (categoryButton) {
                 categoryButton.click();
+            } else {
+                // If saved category is not visible, select the first available category
+                const firstButton = document.querySelector('.category-btn');
+                if (firstButton) {
+                    firstButton.click();
+                }
             }
         } catch (error) {
             console.error('Failed to load category selection:', error);
@@ -951,12 +953,77 @@ class ChatbotPopup {
      * Initialize category selector
      */
     async initializeCategories() {
+        await this.populateCategories();
         await this.loadCategorySelection();
         
         // Initialize with collapsed state on small screens
         if (window.innerWidth < 400) {
             this.categoryOptions.classList.add('collapsed');
             this.categoryToggle.classList.add('collapsed');
+        }
+    }
+
+    /**
+     * Populate categories based on user settings
+     */
+    async populateCategories() {
+        try {
+            const response = await new Promise(resolve => {
+                chrome.runtime.sendMessage({ action: 'getSettings' }, resolve);
+            });
+            
+            if (!response.success) {
+                console.error('Failed to get settings:', response.error);
+                return;
+            }
+            
+            const settings = response.data;
+            const visibleCategories = settings.visibleCategories || {
+                GENERAL: true,
+                HR: false,
+                IT: false,
+                DATA: false,
+                FINANCE: false,
+                MARKETING: false,
+                LEGAL: false,
+                SECURITY: false
+            };
+            
+            const categories = [
+                { key: 'GENERAL', name: 'General', icon: '🤖' },
+                { key: 'HR', name: 'HR', icon: '👥' },
+                { key: 'IT', name: 'IT', icon: '💻' },
+                { key: 'DATA', name: 'Data', icon: '📊' },
+                { key: 'FINANCE', name: 'Finance', icon: '💰' },
+                { key: 'MARKETING', name: 'Marketing', icon: '📢' },
+                { key: 'LEGAL', name: 'Legal', icon: '⚖️' },
+                { key: 'SECURITY', name: 'Security', icon: '🛡️' }
+            ];
+            
+            // Clear existing category buttons
+            this.categoryOptions.innerHTML = '';
+            
+            // Add only visible categories
+            categories.forEach(category => {
+                if (visibleCategories[category.key]) {
+                    const button = document.createElement('button');
+                    button.className = 'category-btn';
+                    button.dataset.category = category.key;
+                    button.dataset.icon = category.icon;
+                    button.innerHTML = `
+                        <span class="category-icon">${category.icon}</span>
+                        <span class="category-name">${category.name}</span>
+                    `;
+                    
+                    // Add click event listener
+                    button.addEventListener('click', this.selectCategory.bind(this));
+                    
+                    this.categoryOptions.appendChild(button);
+                }
+            });
+            
+        } catch (error) {
+            console.error('Failed to populate categories:', error);
         }
     }
 }
