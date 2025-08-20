@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test HTML Extraction</title>
+    <style>
+        body { font-family: sans-serif; }
+        .hidden { display: none; }
+        .invisible { visibility: hidden; }
+        .opacity-0 { opacity: 0; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>This is the header</h1>
+        <nav>
+            <ul>
+                <li><a href="#">Home</a></li>
+                <li><a href="#">About</a></li>
+                <li><a href="#">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <h2>Main Content</h2>
+        <p>This is the main content of the page. It has some <strong>bold</strong> and <em>italic</em> text.</p>
+        <p>Here is another paragraph.</p>
+
+        <h3>A table of data</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Header 1</th>
+                    <th>Header 2</th>
+                    <th>Header 3</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Row 1, Cell 1</td>
+                    <td>Row 1, Cell 2</td>
+                    <td>Row 1, Cell 3</td>
+                </tr>
+                <tr>
+                    <td>Row 2, Cell 1</td>
+                    <td>Row 2, Cell 2</td>
+                    <td>Row 2, Cell 3</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>Here is some more text after the table.</p>
+    </main>
+
+    <aside class="sidebar">
+        <h3>Sidebar</h3>
+        <p>This is the sidebar content, which should be ignored.</p>
+    </aside>
+
+    <footer>
+        <p>Copyright 2025</p>
+    </footer>
+
+    <div class="hidden">This is a hidden div.</div>
+    <div class="invisible">This is an invisible div.</div>
+    <div class="opacity-0">This is a div with opacity 0.</div>
+    <script>
+        console.log("This is a script tag, it should be ignored.");
+    </script>
+</body>
+</html>
