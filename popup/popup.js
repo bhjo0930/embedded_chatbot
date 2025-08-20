@@ -72,6 +72,7 @@ class ChatbotPopup {
         
         // Header buttons
         document.getElementById('settings-btn').addEventListener('click', this.showSettings.bind(this));
+        document.getElementById('new-session').addEventListener('click', this.createNewSession.bind(this));
         document.getElementById('clear-chat').addEventListener('click', this.clearChat.bind(this));
         document.getElementById('summarize-page').addEventListener('click', this.handleSummarizePage.bind(this));
         
@@ -556,6 +557,54 @@ class ChatbotPopup {
         messageDiv.appendChild(timeDiv);
         
         this.messagesContainer.appendChild(messageDiv);
+    }
+
+    /**
+     * Create a new session
+     */
+    async createNewSession() {
+        try {
+            console.log('[AI Chatbot] Creating new session...');
+            
+            // Send request to background script to create new session
+            const response = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({
+                    action: 'createNewSession'
+                }, resolve);
+            });
+
+            if (response.success) {
+                // Clear current session
+                this.currentSessionId = response.data.sessionId;
+                
+                // Clear messages but keep welcome message
+                this.messagesContainer.innerHTML = `
+                    <div class="welcome-message">
+                        <div class="message-bubble bot-message">
+                            <div class="message-content">
+                                👋 Hello! I'm your AI assistant. How can I help you today?
+                            </div>
+                            <div class="message-time">Just now</div>
+                        </div>
+                    </div>
+                `;
+
+                // Update welcome message for current category
+                this.updateWelcomeMessage(this.selectedCategory);
+                
+                console.log(`[AI Chatbot] New session created: ${this.currentSessionId}`);
+                
+                // Show feedback message
+                this.addMessage('✨ New session started!', 'bot');
+                
+            } else {
+                console.error('[AI Chatbot] Failed to create new session:', response.error);
+                this.addMessage(`Error creating new session: ${response.error}`, 'bot', true);
+            }
+        } catch (error) {
+            console.error('[AI Chatbot] Failed to create new session:', error);
+            this.addMessage(`Error creating new session: ${error.message}`, 'bot', true);
+        }
     }
 
     /**

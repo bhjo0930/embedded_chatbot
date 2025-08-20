@@ -167,7 +167,10 @@ class ChatbotSidebar {
                         <div class="ai-chatbot-status">Ready to help</div>
                     </div>
                 </div>
-                <button class="ai-chatbot-close" title="Close Chatbot">&times;</button>
+                <div class="ai-chatbot-header-buttons">
+                    <button class="ai-chatbot-new" title="New Session">New</button>
+                    <button class="ai-chatbot-close" title="Close Chatbot">&times;</button>
+                </div>
             </div>
 
             <!-- Category Selection -->
@@ -311,6 +314,10 @@ class ChatbotSidebar {
         // Close button
         const closeButton = this.sidebar.querySelector('.ai-chatbot-close');
         closeButton.addEventListener('click', this.closeSidebar.bind(this));
+
+        // New session button
+        const newButton = this.sidebar.querySelector('.ai-chatbot-new');
+        newButton.addEventListener('click', this.createNewSession.bind(this));
 
         // Message input
         this.messageInput.addEventListener('input', this.handleInputChange.bind(this));
@@ -569,10 +576,7 @@ class ChatbotSidebar {
 
         if (type === 'bot' && !isError) {
             // Sanitize the content from the bot before formatting
-            const sanitizedContent = DOMPurify.sanitize(content, {
-                ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li', 'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'details', 'summary'],
-                ALLOWED_ATTR: ['href', 'target', 'rel']
-            });
+            const sanitizedContent = this.sanitizeHtml(content);
             const formattedContent = this.formatBotMessage(sanitizedContent);
             contentDiv.appendChild(formattedContent);
         } else if (type === 'user' && !isError && (content.includes('<attachment>') || content.includes('<details>'))) {
@@ -1811,6 +1815,114 @@ class ChatbotSidebar {
             .trim();
 
         return text;
+    }
+
+    /**
+     * Sanitize HTML content to prevent XSS attacks
+     */
+    sanitizeHtml(content) {
+        // Try multiple ways to access DOMPurify
+        let DOMPurify = null;
+        
+        // Check for global DOMPurify
+        if (typeof window !== 'undefined' && window.DOMPurify) {
+            DOMPurify = window.DOMPurify;
+        } else if (typeof globalThis !== 'undefined' && globalThis.DOMPurify) {
+            DOMPurify = globalThis.DOMPurify;
+        } else if (typeof self !== 'undefined' && self.DOMPurify) {
+            DOMPurify = self.DOMPurify;
+        }
+
+        // If DOMPurify is available, use it
+        if (DOMPurify && typeof DOMPurify.sanitize === 'function') {
+            try {
+                return DOMPurify.sanitize(content, {
+                    ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li', 'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'details', 'summary'],
+                    ALLOWED_ATTR: ['href', 'target', 'rel']
+                });
+            } catch (error) {
+                console.warn('[AI Chatbot] DOMPurify sanitization failed:', error);
+                // Fall through to manual sanitization
+            }
+        }
+
+        // Fallback: basic HTML sanitization
+        if (typeof content !== 'string') {
+            return '';
+        }
+
+        // Remove dangerous tags
+        content = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+        content = content.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+        content = content.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+        content = content.replace(/<embed[^>]*>/gi, '');
+        content = content.replace(/<form\b[^<]*(?:(?!<\/form>)<[^<]*)*<\/form>/gi, '');
+        content = content.replace(/<input[^>]*>/gi, '');
+        content = content.replace(/<textarea\b[^<]*(?:(?!<\/textarea>)<[^<]*)*<\/textarea>/gi, '');
+
+        // Remove dangerous attributes
+        content = content.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, ''); // onclick, onload, etc.
+        content = content.replace(/\sjavascript\s*:/gi, '');
+        content = content.replace(/\svbscript\s*:/gi, '');
+        content = content.replace(/\sdata\s*:/gi, '');
+
+        return content;
+    }
+
+    /**
+     * Create a new session
+     */
+    async createNewSession() {
+        try {
+            console.log('[AI Chatbot] Creating new session...');
+            
+            // Send request to background script to create new session
+            const response = await new Promise((resolve) => {
+                chrome.runtime.sendMessage({
+                    action: 'createNewSession'
+                }, resolve);
+            });
+
+            if (response.success) {
+                // Clear current session
+                this.currentSessionId = response.data.sessionId;
+                
+                // Clear messages container except for welcome message
+                const welcomeMessage = this.messagesContainer.querySelector('.ai-chatbot-welcome');
+                this.messagesContainer.innerHTML = '';
+                
+                // Re-add welcome message
+                if (welcomeMessage) {
+                    this.messagesContainer.appendChild(welcomeMessage);
+                } else {
+                    // Create default welcome message if not exists
+                    const defaultWelcome = document.createElement('div');
+                    defaultWelcome.className = 'ai-chatbot-welcome';
+                    defaultWelcome.innerHTML = `
+                        <div class="ai-chatbot-message bot">
+                            👋 Hello! I'm your General AI assistant. How can I help you today?
+                            <div class="ai-chatbot-message-time">Just now</div>
+                        </div>
+                    `;
+                    this.messagesContainer.appendChild(defaultWelcome);
+                }
+
+                // Update welcome message for current category
+                this.updateWelcomeMessage(this.selectedCategory);
+                
+                console.log(`[AI Chatbot] New session created: ${this.currentSessionId}`);
+                
+                // Show feedback message
+                this.addMessage('✨ New session started!', 'bot');
+                
+            } else {
+                console.error('[AI Chatbot] Failed to create new session:', response.error);
+                this.addMessage(`Error creating new session: ${response.error}`, 'bot', true);
+            }
+        } catch (error) {
+            console.error('[AI Chatbot] Failed to create new session:', error);
+            this.addMessage(`Error creating new session: ${error.message}`, 'bot', true);
+        }
     }
 }
 

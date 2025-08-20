@@ -358,9 +358,10 @@ class UnifiedApiClient {
         return cleanedContent;
     }
 
-    generateSessionId() {
+    generateSessionId(tabId = null) {
         const prefix = this.backend === 'ollama' ? 'ollama' : 'n8n';
-        return `${prefix}_session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+        const tabSuffix = tabId ? `_tab${tabId}` : '';
+        return `${prefix}_session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}${tabSuffix}`;
     }
 }
 
@@ -452,7 +453,7 @@ async function handleExtensionUpdate(previousVersion) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.action) {
         case 'sendMessage':
-            handleSendMessage(request.data)
+            handleSendMessage(request.data, sender)
                 .then(response => sendResponse({ success: true, data: response }))
                 .catch(error => sendResponse({ success: false, error: error.message }));
             return true; // Keep message channel open for async response
@@ -499,6 +500,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 .catch(error => sendResponse({ success: false, error: error.message }));
             return true;
 
+        case 'createNewSession':
+            createNewSession(sender?.tab?.id)
+                .then(sessionId => sendResponse({ success: true, data: { sessionId } }))
+                .catch(error => sendResponse({ success: false, error: error.message }));
+            return true;
+
         default:
             sendResponse({ success: false, error: 'Unknown action' });
     }
@@ -531,11 +538,35 @@ async function handleGetPageContent() {
 }
 
 /**
+ * Create a new session for the specified tab
+ */
+async function createNewSession(tabId = null) {
+    try {
+        const sessionKey = tabId ? `currentSession_tab${tabId}` : 'currentSession';
+        const tabSuffix = tabId ? `_tab${tabId}` : '';
+        
+        const newSession = {
+            id: `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}${tabSuffix}`,
+            startTime: new Date().toISOString(),
+            messageCount: 0
+        };
+
+        await chrome.storage.local.set({ [sessionKey]: newSession });
+        console.log(`New session created: ${newSession.id}`);
+        return newSession.id;
+    } catch (error) {
+        console.error('Failed to create new session:', error);
+        throw error;
+    }
+}
+
+/**
  * Handle sending message using unified API client
  */
-async function handleSendMessage(data) {
+async function handleSendMessage(data, sender) {
     try {
         const { message, sessionId, category } = data;
+        const tabId = sender?.tab?.id;
 
         // Get current settings
         const settings = await getSettings();
@@ -556,7 +587,7 @@ async function handleSendMessage(data) {
         // Send message using unified client
         const response = await apiClient.sendMessage(message, {
             category: category || 'GENERAL',
-            sessionId: sessionId || await getSessionId()
+            sessionId: sessionId || await getSessionId(tabId)
         });
 
         // Save messages to history if enabled
@@ -913,21 +944,23 @@ async function getAvailableModels() {
 /**
  * Get current session ID
  */
-async function getSessionId() {
+async function getSessionId(tabId = null) {
     try {
-        const result = await chrome.storage.local.get(['currentSession']);
-        if (result.currentSession && isValidSession(result.currentSession)) {
-            return result.currentSession.id;
+        const sessionKey = tabId ? `currentSession_tab${tabId}` : 'currentSession';
+        const result = await chrome.storage.local.get([sessionKey]);
+        if (result[sessionKey] && isValidSession(result[sessionKey])) {
+            return result[sessionKey].id;
         }
 
         // Create new session
+        const tabSuffix = tabId ? `_tab${tabId}` : '';
         const newSession = {
-            id: `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+            id: `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}${tabSuffix}`,
             startTime: new Date().toISOString(),
             messageCount: 0
         };
 
-        await chrome.storage.local.set({ currentSession: newSession });
+        await chrome.storage.local.set({ [sessionKey]: newSession });
         return newSession.id;
     } catch (error) {
         console.error('Failed to get session ID:', error);
