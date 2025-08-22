@@ -19,6 +19,7 @@ class ChatbotPopup {
         this.categoryToggle = null;
         this.botAvatar = null;
         this.botName = null;
+        this.settings = {};
         
         this.init();
     }
@@ -103,17 +104,18 @@ class ChatbotPopup {
     handleInputChange() {
         const message = this.messageInput.value.trim();
         const charCount = this.messageInput.value.length;
+        const maxLength = this.settings.maxMessageLength || 4000;
         
         // Update character count
-        this.charCount.textContent = `${charCount}/2000`;
+        this.charCount.textContent = `${charCount}/${maxLength}`;
         
         // Update send button state
-        this.sendButton.disabled = !message || this.isTyping;
+        this.sendButton.disabled = !message || this.isTyping || charCount > maxLength;
         
         // Update character count color
-        if (charCount > 1800) {
+        if (charCount > maxLength * 0.9) {
             this.charCount.style.color = '#ef4444';
-        } else if (charCount > 1500) {
+        } else if (charCount > maxLength * 0.75) {
             this.charCount.style.color = '#f59e0b';
         } else {
             this.charCount.style.color = '#94a3b8';
@@ -174,9 +176,9 @@ class ChatbotPopup {
                     <div id="page-content"></div>
                 </div>
                 <script>
-                    const html = `${htmlContent.replace(/`/g, '`')}`;
+                    const html = `${htmlContent.replace(/`/g, '\`')}`;
                     const parser = new DOMParser();
-                    const doc = parser = parser.parseFromString(html, 'text/html');
+                    const doc = parser.parseFromString(html, 'text/html');
                     const body = doc.body;
 
                     // Sanitize the body content here if needed
@@ -219,9 +221,9 @@ class ChatbotPopup {
                             alert('Question: ' + question);
                         }
                     });
-                <\/script>
+                </script>
             </body>
-            <\/html>
+            </html>
         `);
         newWindow.document.close();
     }
@@ -667,6 +669,7 @@ class ChatbotPopup {
             });
             
             if (response.success) {
+                this.settings = response.data;
                 const settings = response.data;
                 
                 // Backend selection
@@ -693,6 +696,7 @@ class ChatbotPopup {
                 // Common settings
                 document.getElementById('api-timeout').value = settings.timeout || 30;
                 document.getElementById('save-history').checked = settings.saveHistory !== false;
+                this.messageInput.maxLength = this.settings.maxMessageLength || 4000;
                 
                 // Load Ollama models if backend is Ollama
                 if (settings.backend === 'ollama') {
@@ -1084,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Debug function for testing message formatting
 window.testMessageFormatting = function() {
-    const testMessage = `개인정보보호위원회는 합성데이터(Synthetic data)의 안전한 생성 및 활용을 지원하기 위해 「합성데이터 생성·활용 안내서」를 발간했습니다. 주요 내용은 다음과 같습니다:\\n\\n1. **합성데이터 정의**: 원본 데이터의 구조·통계적 특성을 학습해 생성한 가상 데이터로, 개인 식별정보 노출 없이 데이터 공유·활용 가능.\\n2. **안내서 주요 내용**:\\n - 생성·활용 절차: 사전 준비 → 합성데이터 생성 → 안전성/유용성 검증 → 심의위원회 평가 → 활용 및 안전 관리\\n - 개인정보 식별 가능성 대응을 위한 단계별 세부 가이드\\n - 비정형 데이터(이미지 등) 활용 시 유의사항 및 안전성 검증 절차\\n3. **의의**: 산업·연구 현장에서 합성데이터 활용 기준·방법론을 체계화해 애로사항 해소\\n4. **참고 자료**: \\n - 합성데이터 생성 참조모델(2024년 5월) 및 '가명정보 지원 플랫폼(dataprivacy.go.kr)'에서 다운로드 가능\\n\\n이 안내서는 합성데이터를 익명정보로 활용하기 위한 기준을 제시하며, 산학연·법률 전문가가 참여해 작성되었습니다.`;
+    const testMessage = `개인정보보호위원회는 합성데이터(Synthetic data)의 안전한 생성 및 활용을 지원하기 위해 「합성데이터 생성·활용 안내서」를 발간했습니다. 주요 내용은 다음과 같습니다:\n\n1. **합성데이터 정의**: 원본 데이터의 구조·통계적 특성을 학습해 생성한 가상 데이터로, 개인 식별정보 노출 없이 데이터 공유·활용 가능.\n2. **안내서 주요 내용**:\n - 생성·활용 절차: 사전 준비 → 합성데이터 생성 → 안전성/유용성 검증 → 심의위원회 평가 → 활용 및 안전 관리\n - 개인정보 식별 가능성 대응을 위한 단계별 세부 가이드\n - 비정형 데이터(이미지 등) 활용 시 유의사항 및 안전성 검증 절차\n3. **의의**: 산업·연구 현장에서 합성데이터 활용 기준·방법론을 체계화해 애로사항 해소\n4. **참고 자료**: \n - 합성데이터 생성 참조모델(2024년 5월) 및 '가명정보 지원 플랫폼(dataprivacy.go.kr)'에서 다운로드 가능\n\n이 안내서는 합성데이터를 익명정보로 활용하기 위한 기준을 제시하며, 산학연·법률 전문가가 참여해 작성되었습니다.`;
     
     if (window.chatbot) {
         window.chatbot.addMessage(testMessage, 'bot');

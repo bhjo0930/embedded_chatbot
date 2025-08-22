@@ -4,11 +4,6 @@
     }
     window.chatbotSidebarInjected = true;
 
-    /**
-     * AI Chatbot Sidebar Content Script
-     * Creates a sidebar chatbot interface on web pages
-     */
-
     class ChatbotSidebar {
         constructor() {
             this.isOpen = false;
@@ -102,7 +97,8 @@
                         this.settings = {
                             webhookUrl: '',
                             timeout: 30,
-                            saveHistory: true
+                            saveHistory: true,
+                            maxMessageLength: 4000
                         };
                     }
                     resolve();
@@ -158,6 +154,7 @@
          * Get sidebar HTML structure
          */
         getSidebarHTML() {
+            const maxLength = this.settings.maxMessageLength || 4000;
             return `
                 <!-- Resize Handle -->
                 <div class="ai-chatbot-resize-handle"></div>
@@ -226,7 +223,7 @@
                             class="ai-chatbot-input" 
                             placeholder="Type your message..." 
                             rows="1"
-                            maxlength="4000"
+                            maxlength="${maxLength}"
                         ></textarea>
                         <button class="ai-chatbot-html-btn" title="Add current page HTML to chat">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -239,7 +236,7 @@
                             </svg>
                         </button>
                     </div>
-                    <div class="ai-chatbot-char-count">0/4000</div>
+                    <div class="ai-chatbot-char-count">0/${maxLength}</div>
                 </div>
             `;
         }
@@ -423,24 +420,25 @@
             if (this.attachmentsArea.children.length > 0) {
                 const attachments = Array.from(this.attachmentsArea.children);
                 attachments.forEach(attachment => {
-                    const content = attachment.dataset.content || '';
-                    attachmentLength += content.length + 200; // Add overhead for attachment tags
+                    const content = (attachment._content !== undefined ? attachment._content : (attachment.dataset.content || ''));
+                    attachmentLength += String(content).length + 200; // Add overhead for attachment tags
                 });
             }
 
+            // Enforce max length only on attachments, not on user input typing
+            const maxLength = this.settings.maxMessageLength || 4000;
             const totalLength = charCount + attachmentLength;
-            const maxLength = 4000;
-            const availableLength = Math.max(0, maxLength - attachmentLength);
 
             // Update character count display
             if (attachmentLength > 0) {
-                this.charCount.textContent = `${charCount}/${availableLength} (${attachmentLength} from attachments)`;
+                this.charCount.textContent = `${charCount}/${maxLength} (${attachmentLength} from attachments)`;
             } else {
                 this.charCount.textContent = `${charCount}/${maxLength}`;
             }
 
             // Update send button state
             const hasAttachments = this.attachmentsArea.children.length > 0;
+            // Allow typing regardless of attachments; only block send if total exceeds limit
             this.sendButton.disabled = (!message && !hasAttachments) || this.isTyping || totalLength > maxLength;
 
             // Update character count color
@@ -453,8 +451,7 @@
                 this.charCount.style.color = '#94a3b8';
             }
 
-            // Update input maxlength dynamically
-            this.messageInput.setAttribute('maxlength', availableLength.toString());
+            // Do NOT shrink input maxlength based on attachments; keep it fixed
         }
 
         /**
@@ -492,15 +489,22 @@
                 if (hasAttachments) {
                     const attachments = Array.from(this.attachmentsArea.children);
                     attachments.forEach(attachment => {
-                        completeMessage += `<attachment>
-<icon>${attachment.dataset.icon}</icon>
-<filename>${attachment.dataset.filename}</filename>
-<type>${attachment.dataset.type}</type>
-<url>${attachment.dataset.url}</url>
-<content>${attachment.dataset.content}</content>
-</attachment>
+                        const icon = attachment.dataset.icon || '';
+                        const filename = attachment.dataset.filename || '';
+                        const type = attachment.dataset.type || '';
+                        const url = attachment.dataset.url || '';
+                        let content = attachment._content !== undefined ? attachment._content : (attachment.dataset.content || '');
 
-`;
+                        // Enforce max length only on attachment content
+                        const maxTotal = (this.settings.maxMessageLength || 4000) - 200; // buffer
+                        const currentUserLen = (this.messageInput.value || '').length;
+                        const remainingForAttachment = Math.max(0, maxTotal - currentUserLen);
+
+                        if (content.length > remainingForAttachment) {
+                            content = content.substring(0, Math.max(0, remainingForAttachment)) + '\n... (attachment truncated)';
+                        }
+
+                        completeMessage += `<attachment>\n<icon>${icon}</icon>\n<filename>${filename}</filename>\n<type>${type}</type>\n<url>${url}</url>\n<content>${content}</content>\n</attachment>\n\n`;
                     });
                 }
 
@@ -509,10 +513,10 @@
                     completeMessage += message;
                 }
 
-                // Check message length and truncate if necessary
-                const maxTotalLength = 3800; // Leave some buffer for API processing
+                // After composing, enforce global cap as a last resort (should rarely trigger)
+                const maxTotalLength = (this.settings.maxMessageLength || 4000) - 200;
                 if (completeMessage.length > maxTotalLength) {
-                    console.warn('[AI Chatbot] Message too long, truncating...', completeMessage.length);
+                    console.warn('[AI Chatbot] Message too long after per-attachment truncation, applying final cap', completeMessage.length);
                     completeMessage = completeMessage.substring(0, maxTotalLength) + '\n... (message truncated due to length)';
                 }
 
@@ -588,7 +592,48 @@
             } else if (type === 'user' && !isError && (content.includes('<attachment>') || content.includes('<details>'))) {
                 // For user messages with attachment or details tags, also use formatting
                 // This is content generated by the extension itself, so it's considered safe.
-                contentDiv.appendChild(this.formatBotMessage(content));
+                // Strip heavy <content> payload from display to avoid dumping raw HTML/text in the bubble
+                const contentForDisplay = String(content).replace(/<content>[\s\S]*?<\/content>/gi, '<content></content>');
+                const formattedContent = this.formatBotMessage(contentForDisplay);
+                // Fallback: if formatting produced no visible nodes, render minimal attachment chips instead of raw content
+                if (!formattedContent || !formattedContent.hasChildNodes()) {
+                    console.warn('[AI Chatbot] Formatted user message was empty, falling back to minimal attachment chips');
+                    const attachments = [];
+                    // Extract minimal fields for the first attachment block(s)
+                    const attachmentBlocks = String(content).split(/<attachment>/i).slice(1);
+                    attachmentBlocks.forEach(block => {
+                        const getTag = (tag) => {
+                            const m = block.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i'));
+                            return m ? m[1].trim() : '';
+                        };
+                        const deriveNameFromUrl = (urlStr) => {
+                            if (!urlStr) return '';
+                            try {
+                                const u = new URL(urlStr);
+                                const last = u.pathname.split('/').filter(Boolean).pop();
+                                return last ? decodeURIComponent(last) : '';
+                            } catch { return '' }
+                        };
+                        const urlVal = getTag('url');
+                        const nameFromUrl = deriveNameFromUrl(urlVal);
+                        const fallbackName = document.title || 'Attachment';
+                        const filenameVal = getTag('filename') || nameFromUrl || fallbackName;
+                        attachments.push({
+                            icon: getTag('icon') || '🌐',
+                            filename: filenameVal,
+                            type: getTag('type') || 'HTML',
+                            url: urlVal || '',
+                            content: ''
+                        });
+                    });
+                    if (attachments.length === 0) {
+                        // As a last resort, show a single generic attachment chip
+                        attachments.push({ icon: '📄', filename: 'Attachment', type: 'FILE', url: '', content: '' });
+                    }
+                    attachments.forEach(a => this.createAttachmentElement(a, contentDiv));
+                } else {
+                    contentDiv.appendChild(formattedContent);
+                }
             } else {
                 // For user messages and errors, treat as plain text.
                 // Split by newlines to preserve them.
@@ -636,6 +681,19 @@
                     return;
                 } else if (line.trim() === '</attachment>') {
                     insideAttachment = false;
+                    // Ensure filename fallback if missing
+                    if (!attachmentData.filename || attachmentData.filename.trim() === '') {
+                        if (attachmentData.url) {
+                            try {
+                                const u = new URL(attachmentData.url);
+                                attachmentData.filename = (u.pathname && u.pathname !== '/') ? decodeURIComponent(u.pathname.split('/').filter(Boolean).pop()) : (document.title || 'Attachment');
+                            } catch {
+                                attachmentData.filename = document.title || 'Attachment';
+                            }
+                        } else {
+                            attachmentData.filename = document.title || 'Attachment';
+                        }
+                    }
                     // Create attachment element
                     this.createAttachmentElement(attachmentData, fragment);
                     attachmentData = {};
@@ -797,7 +855,7 @@
             }
 
             // Skip standalone separator lines that might be table separators
-            if (line.match(/^\s*[-:|\]s]+\s*$/)) {
+            if (line.match(/^\s*[-: |\s]+\s*$/)) {
                 // This is likely a table separator or similar, skip it
                 return;
             }
@@ -818,10 +876,8 @@
                 if (!trimmed || !trimmed.includes('|')) return false;
                 
                 // Check if it's a separator row (contains only |, -, :, and spaces)
-                // More comprehensive pattern to catch all separator variations
-                const isSeparator = /^[\]s\|:\-]+\s*$/.test(trimmed) || 
-                                   /^\|[\s:\-\|]*\|$/.test(trimmed) ||
-                                   /^[\]s]*\|?[\s:\-]+\|?[\s]*$/.test(trimmed);
+                // Use a single robust pattern to avoid invalid regex ("Nothing to repeat") errors
+                const isSeparator = /^[\s\|:\-]+$/.test(trimmed);
                 
                 return !isSeparator;
             });
@@ -1593,7 +1649,10 @@
 
             // Store attachment data
             attachmentDiv.dataset.url = attachmentData.url || '';
-            attachmentDiv.dataset.content = attachmentData.content || '';
+            // Don't duplicate huge content into dataset to avoid DOM attribute size limits
+            // Store a reference on the element instead (non-serialized property)
+            attachmentDiv.dataset.content = '';
+            attachmentDiv._content = attachmentData.content || '';
             attachmentDiv.dataset.filename = attachmentData.filename || '';
             attachmentDiv.dataset.type = attachmentData.type || '';
             attachmentDiv.dataset.icon = attachmentData.icon || '';
@@ -1637,47 +1696,17 @@
          */
         getPageHtml() {
             try {
-                let extractedContent = '';
+                // 1) Always extract ALL text content first (relaxed), then rely on truncation at send time
+                const fullText = this.extractTextContentRelaxed(document.body);
 
-                // Strategy 1: Try to find main content containers
-                const mainContentSelectors = [
-                    'main', 'article', '[role="main"]', '.content', '.main-content',
-                    '#content', '#main', '.post-content', '.entry-content'
-                ];
+                // 2) Prepend useful meta/structured data
+                const meta = this.extractFromMetaAndStructuredData();
 
-                for (const selector of mainContentSelectors) {
-                    const element = document.querySelector(selector);
-                    if (element && this.isVisible(element)) {
-                        extractedContent = this.extractTextContent(element);
-                        if (extractedContent && extractedContent.length > 200) {
-                            break;
-                        }
-                    }
-                }
+                // 3) Compose and normalize
+                let combined = [meta, fullText].filter(Boolean).join('\n\n');
+                combined = combined.replace(/\n\s*\n/g, '\n\n').trim();
 
-                // Strategy 2: If main content is insufficient, try comprehensive extraction from body
-                if (!extractedContent || extractedContent.length < 200) {
-                    extractedContent = this.extractTextContent(document.body);
-                }
-
-                // Strategy 3: If still insufficient, extract from meta tags and structured data
-                if (!extractedContent || extractedContent.length < 100) {
-                    extractedContent = this.extractFromMetaAndStructuredData();
-                }
-
-                // Final cleanup
-                extractedContent = extractedContent
-                    .replace(/\s+/g, ' ')
-                    .replace(/\n\s*\n/g, '\n\n')
-                    .trim();
-
-                // Limit the content length
-                const maxLength = 3500;
-                if (extractedContent.length > maxLength) {
-                    extractedContent = extractedContent.substring(0, maxLength) + '\n... (content truncated)';
-                }
-
-                return extractedContent || 'No meaningful content found on this page.';
+                return combined || 'No meaningful content found on this page.';
 
             } catch (error) {
                 console.error('[AI Chatbot] Error getting page HTML:', error);
@@ -1836,9 +1865,62 @@
                     if (isBlock) content += '\n';
 
                     for (const child of node.childNodes) {
-                        content += getText(child) + ' '; // Add space between child nodes
+                        content += getText(child) + ' ';
                     }
 
+                    if (isBlock) content += '\n';
+                    return content;
+                }
+                return '';
+            };
+
+            return getText(clone).replace(/\s+/g, ' ').replace(/\n\s*\n/g, '\n\n').trim();
+        }
+
+        /**
+         * Relaxed content extraction without visibility checks and with minimal filtering
+         */
+        extractTextContentRelaxed(element) {
+            const clone = element.cloneNode(true);
+
+            // Remove only clearly unwanted elements
+            const unwantedSelectors = [
+                'script', 'style', 'noscript', 'iframe', 'object', 'embed',
+                '#ai-chatbot-sidebar', '#ai-chatbot-toggle'
+            ];
+
+            unwantedSelectors.forEach(selector => {
+                clone.querySelectorAll(selector).forEach(el => el.remove());
+            });
+
+            const processTable = (tableNode) => {
+                let tableContent = '\n';
+                const rows = tableNode.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('th, td');
+                    let rowContent = '| ';
+                    cells.forEach(cell => {
+                        rowContent += (cell.innerText || '').replace(/\s+/g, ' ').trim() + ' | ';
+                    });
+                    tableContent += rowContent + '\n';
+                });
+                return tableContent;
+            };
+
+            const getText = (node) => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    return node.textContent;
+                }
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    if (node.tagName === 'TABLE') {
+                        return processTable(node);
+                    }
+                    let content = '';
+                    const isBlock = (node instanceof Element) && (window.getComputedStyle(node).display === 'block');
+                    if (isBlock) content += '\n';
+                    for (const child of node.childNodes) {
+                        content += getText(child) + ' ';
+                    }
                     if (isBlock) content += '\n';
                     return content;
                 }

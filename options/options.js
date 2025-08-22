@@ -51,6 +51,7 @@ class OptionsPage {
         this.showToggleButtonCheckbox = document.getElementById('show-toggle-button');
         this.showHtmlButtonCheckbox = document.getElementById('show-html-button');
         this.themeSelect = document.getElementById('theme');
+        this.maxMessageLengthInput = document.getElementById('max-message-length');
         this.sessionDurationInput = document.getElementById('session-duration');
         this.allowPrivateNetworkCheckbox = document.getElementById('allow-private-network');
         this.debugModeCheckbox = document.getElementById('debug-mode');
@@ -109,6 +110,7 @@ class OptionsPage {
             this.temperatureInput,
             this.timeoutInput,
             this.maxRetriesInput,
+            this.maxMessageLengthInput,
             this.sessionDurationInput
         ].forEach(element => {
             if (element) {
@@ -262,6 +264,9 @@ class OptionsPage {
             case 'max-retries':
                 this.validateRetries(field, value);
                 break;
+            case 'max-message-length':
+                this.validateMaxMessageLength(field, value);
+                break;
             case 'session-duration':
                 this.validateSessionDuration(field, value);
                 break;
@@ -313,6 +318,16 @@ class OptionsPage {
         const num = parseInt(value);
         const isValid = num >= 0 && num <= 5;
         this.setFieldValidation(field, isValid, 'Retries must be between 0 and 5');
+        return isValid;
+    }
+
+    /**
+     * Validate max message length
+     */
+    validateMaxMessageLength(field, value) {
+        const num = parseInt(value);
+        const isValid = num >= 1000 && num <= 16000;
+        this.setFieldValidation(field, isValid, 'Max message length must be between 1,000 and 16,000');
         return isValid;
     }
 
@@ -369,6 +384,7 @@ class OptionsPage {
         // Common validations
         isValid = this.validateTimeout(this.timeoutInput, this.timeoutInput.value) && isValid;
         isValid = this.validateRetries(this.maxRetriesInput, this.maxRetriesInput.value) && isValid;
+        isValid = this.validateMaxMessageLength(this.maxMessageLengthInput, this.maxMessageLengthInput.value) && isValid;
         isValid = this.validateSessionDuration(this.sessionDurationInput, this.sessionDurationInput.value) && isValid;
         
         return isValid;
@@ -415,6 +431,7 @@ class OptionsPage {
             temperature: 0.7,
             timeout: 30,
             maxRetries: 3,
+            maxMessageLength: 4000,
             saveHistory: true,
             autoScroll: true,
             notifications: true,
@@ -448,6 +465,7 @@ class OptionsPage {
         // Common settings
         this.timeoutInput.value = settings.timeout || 30;
         this.maxRetriesInput.value = settings.maxRetries || 3;
+        this.maxMessageLengthInput.value = settings.maxMessageLength || 4000;
         this.saveHistoryCheckbox.checked = settings.saveHistory !== false;
         this.autoScrollCheckbox.checked = settings.autoScroll !== false;
         this.notificationsCheckbox.checked = settings.notifications !== false;
@@ -587,6 +605,7 @@ class OptionsPage {
             temperature: this.temperatureInput ? parseFloat(this.temperatureInput.value) || 0.7 : 0.7,
             timeout: Math.max(5, Math.min(600, parseInt(this.timeoutInput.value) || 30)),
             maxRetries: Math.max(0, Math.min(5, parseInt(this.maxRetriesInput.value) || 3)),
+            maxMessageLength: Math.max(1000, Math.min(16000, parseInt(this.maxMessageLengthInput.value) || 4000)),
             saveHistory: this.saveHistoryCheckbox.checked,
             autoScroll: this.autoScrollCheckbox.checked,
             notifications: this.notificationsCheckbox.checked,

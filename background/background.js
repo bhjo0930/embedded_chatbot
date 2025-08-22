@@ -401,6 +401,7 @@ async function initializeDefaultSettings() {
             ollamaModel: '',
             temperature: 0.7,
             timeout: 30,
+            maxMessageLength: 4000,
             saveHistory: true,
             theme: 'light',
             notifications: true,
@@ -504,6 +505,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             createNewSession(sender?.tab?.id)
                 .then(sessionId => sendResponse({ success: true, data: { sessionId } }))
                 .catch(error => sendResponse({ success: false, error: error.message }));
+            return true;
+
+        case 'saveData':
+            // Save arbitrary data to chrome.storage.local
+            (async () => {
+                try {
+                    const data = request.data && typeof request.data === 'object' ? request.data : {};
+                    await chrome.storage.local.set(data);
+                    sendResponse({ success: true });
+                } catch (error) {
+                    sendResponse({ success: false, error: error.message });
+                }
+            })();
+            return true;
+
+        case 'getData':
+            // Get a value by key from chrome.storage.local
+            (async () => {
+                try {
+                    const key = request.key;
+                    if (!key || typeof key !== 'string') {
+                        sendResponse({ success: false, error: 'Invalid key' });
+                        return;
+                    }
+                    const result = await chrome.storage.local.get([key]);
+                    sendResponse({ success: true, data: result[key] });
+                } catch (error) {
+                    sendResponse({ success: false, error: error.message });
+                }
+            })();
             return true;
 
         default:
@@ -651,6 +682,7 @@ async function getDefaultSettings() {
         ollamaModel: '',
         temperature: 0.7,
         timeout: 30,
+        maxMessageLength: 4000,
         saveHistory: true,
         theme: 'light',
         notifications: true,
@@ -682,8 +714,9 @@ async function getDefaultSettings() {
  */
 async function saveSettings(settings) {
     try {
-        // Validate settings
-        const validatedSettings = validateSettings(settings);
+        // Merge with existing settings to preserve values not provided (e.g., maxMessageLength)
+        const current = (await chrome.storage.local.get(['settings'])).settings || {};
+        const validatedSettings = validateSettings(settings, current);
         await chrome.storage.local.set({ settings: validatedSettings });
         return true;
     } catch (error) {
@@ -695,7 +728,7 @@ async function saveSettings(settings) {
 /**
  * Validate settings object
  */
-function validateSettings(settings) {
+function validateSettings(settings, current = {}) {
     const defaults = {
         backend: 'n8n',
         webhookUrl: '',
@@ -703,6 +736,7 @@ function validateSettings(settings) {
         ollamaModel: '',
         temperature: 0.7,
         timeout: 30,
+        maxMessageLength: 4000,
         saveHistory: true,
         theme: 'light',
         notifications: true,
@@ -724,7 +758,8 @@ function validateSettings(settings) {
         version: '0.7.0'
     };
 
-    const validated = { ...defaults };
+    // Start from defaults, then existing current settings, then apply new values
+    const validated = { ...defaults, ...current };
 
     // Validate backend
     if (settings.backend && ['n8n', 'ollama'].includes(settings.backend)) {
@@ -769,6 +804,11 @@ function validateSettings(settings) {
     // Validate timeout
     if (settings.timeout && typeof settings.timeout === 'number') {
         validated.timeout = Math.max(5, Math.min(600, settings.timeout));
+    }
+
+    // Validate maxMessageLength
+    if (settings.maxMessageLength && typeof settings.maxMessageLength === 'number') {
+        validated.maxMessageLength = Math.max(1000, Math.min(16000, settings.maxMessageLength));
     }
 
 
