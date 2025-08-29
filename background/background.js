@@ -400,13 +400,13 @@ async function initializeDefaultSettings() {
             ollamaUrl: 'http://localhost:11434',
             ollamaModel: '',
             temperature: 0.7,
-            timeout: 30,
-            maxMessageLength: 4000,
+            timeout: 300,
+            maxMessageLength: 8000,
             saveHistory: true,
             theme: 'light',
             notifications: true,
             autoScroll: true,
-            showToggleButton: true,
+            showToggleButton: false,
             showHtmlButton: true,
             sidebarWidth: 400,
             allowPrivateNetwork: true,
@@ -681,13 +681,13 @@ async function getDefaultSettings() {
         ollamaUrl: 'http://localhost:11434',
         ollamaModel: '',
         temperature: 0.7,
-        timeout: 30,
-        maxMessageLength: 4000,
+        timeout: 300,
+        maxMessageLength: 8000,
         saveHistory: true,
         theme: 'light',
         notifications: true,
         autoScroll: true,
-        showToggleButton: true,
+        showToggleButton: false,
         showHtmlButton: true,
         sidebarWidth: 400,
         allowPrivateNetwork: true,
@@ -735,13 +735,13 @@ function validateSettings(settings, current = {}) {
         ollamaUrl: 'http://localhost:11434',
         ollamaModel: '',
         temperature: 0.7,
-        timeout: 30,
-        maxMessageLength: 4000,
+        timeout: 300,
+        maxMessageLength: 8000,
         saveHistory: true,
         theme: 'light',
         notifications: true,
         autoScroll: true,
-        showToggleButton: true,
+        showToggleButton: false,
         showHtmlButton: true,
         sidebarWidth: 400,
         allowPrivateNetwork: true,
@@ -803,7 +803,7 @@ function validateSettings(settings, current = {}) {
 
     // Validate timeout
     if (settings.timeout && typeof settings.timeout === 'number') {
-        validated.timeout = Math.max(5, Math.min(600, settings.timeout));
+        validated.timeout = Math.max(5, Math.min(1800, settings.timeout));
     }
 
     // Validate maxMessageLength

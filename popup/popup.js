@@ -104,7 +104,7 @@ class ChatbotPopup {
     handleInputChange() {
         const message = this.messageInput.value.trim();
         const charCount = this.messageInput.value.length;
-        const maxLength = this.settings.maxMessageLength || 4000;
+        const maxLength = this.settings.maxMessageLength || 8000;
         
         // Update character count
         this.charCount.textContent = `${charCount}/${maxLength}`;
@@ -696,7 +696,7 @@ class ChatbotPopup {
                 // Common settings
                 document.getElementById('api-timeout').value = settings.timeout || 30;
                 document.getElementById('save-history').checked = settings.saveHistory !== false;
-                this.messageInput.maxLength = this.settings.maxMessageLength || 4000;
+                this.messageInput.maxLength = this.settings.maxMessageLength || 8000;
                 
                 // Load Ollama models if backend is Ollama
                 if (settings.backend === 'ollama') {
@@ -786,7 +786,7 @@ class ChatbotPopup {
                 webhookUrl,
                 ollamaUrl,
                 ollamaModel,
-                timeout: Math.max(5, Math.min(600, timeout)),
+                timeout: Math.max(5, Math.min(1800, timeout)),
                 saveHistory
             };
             

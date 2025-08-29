@@ -337,7 +337,7 @@ Webhook → Primary AI → Error Trigger → Secondary AI → Respond
 - Network latency
 
 **Solutions:**
-1. Increase timeout in extension settings (max 600 seconds)
+1. Increase timeout in extension settings (max 1800 seconds)
 2. Optimize n8n workflow performance
 3. Check AI service response times
 4. Consider using faster AI models

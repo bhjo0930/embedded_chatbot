@@ -306,8 +306,8 @@ class OptionsPage {
      */
     validateTimeout(field, value) {
         const num = parseInt(value);
-        const isValid = num >= 5 && num <= 600;
-        this.setFieldValidation(field, isValid, 'Timeout must be between 5 and 600 seconds');
+        const isValid = num >= 5 && num <= 1800;
+        this.setFieldValidation(field, isValid, 'Timeout must be between 5 and 1800 seconds');
         return isValid;
     }
 
@@ -429,9 +429,9 @@ class OptionsPage {
             ollamaUrl: 'http://localhost:11434',
             ollamaModel: '',
             temperature: 0.7,
-            timeout: 30,
+            timeout: 300,
             maxRetries: 3,
-            maxMessageLength: 4000,
+            maxMessageLength: 8000,
             saveHistory: true,
             autoScroll: true,
             notifications: true,
@@ -463,13 +463,13 @@ class OptionsPage {
         }
         
         // Common settings
-        this.timeoutInput.value = settings.timeout || 30;
+        this.timeoutInput.value = settings.timeout || 300;
         this.maxRetriesInput.value = settings.maxRetries || 3;
-        this.maxMessageLengthInput.value = settings.maxMessageLength || 4000;
+        this.maxMessageLengthInput.value = settings.maxMessageLength || 8000;
         this.saveHistoryCheckbox.checked = settings.saveHistory !== false;
         this.autoScrollCheckbox.checked = settings.autoScroll !== false;
         this.notificationsCheckbox.checked = settings.notifications !== false;
-        this.showToggleButtonCheckbox.checked = settings.showToggleButton !== false;
+        this.showToggleButtonCheckbox.checked = settings.showToggleButton === true;
         this.showHtmlButtonCheckbox.checked = settings.showHtmlButton !== false;
         this.themeSelect.value = settings.theme || 'light';
         this.sessionDurationInput.value = settings.sessionDuration || 24;
@@ -603,9 +603,9 @@ class OptionsPage {
             ollamaUrl: this.ollamaUrlInput ? this.ollamaUrlInput.value.trim() : 'http://localhost:11434',
             ollamaModel: this.ollamaModelSelect ? this.ollamaModelSelect.value : '',
             temperature: this.temperatureInput ? parseFloat(this.temperatureInput.value) || 0.7 : 0.7,
-            timeout: Math.max(5, Math.min(600, parseInt(this.timeoutInput.value) || 30)),
+            timeout: Math.max(5, Math.min(1800, parseInt(this.timeoutInput.value) || 300)),
             maxRetries: Math.max(0, Math.min(5, parseInt(this.maxRetriesInput.value) || 3)),
-            maxMessageLength: Math.max(1000, Math.min(16000, parseInt(this.maxMessageLengthInput.value) || 4000)),
+            maxMessageLength: Math.max(1000, Math.min(16000, parseInt(this.maxMessageLengthInput.value) || 8000)),
             saveHistory: this.saveHistoryCheckbox.checked,
             autoScroll: this.autoScrollCheckbox.checked,
             notifications: this.notificationsCheckbox.checked,

@@ -95,7 +95,7 @@ Your n8n webhook should:
 #### Settings Options
 
 - **Webhook URL**: Your n8n webhook endpoint (required)
-- **Request Timeout**: Maximum wait time for responses (5-600 seconds)
+- **Request Timeout**: Maximum wait time for responses (5-1800 seconds)
 - **Save Chat History**: Enable/disable local message storage
 - **Theme**: Light, dark, or auto (system) theme
 - **Auto Scroll**: Automatically scroll to new messages

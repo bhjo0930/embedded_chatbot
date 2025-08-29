@@ -52,7 +52,7 @@
                 await this.loadCategorySelection();
 
                 // Set initial toggle button visibility based on settings
-                const showToggleButton = this.settings.showToggleButton !== false; // Default to true
+                const showToggleButton = this.settings.showToggleButton === true; // Default to false
                 this.setToggleButtonVisibility(showToggleButton);
 
                 // Set initial HTML button visibility based on settings
@@ -96,9 +96,9 @@
                     } else {
                         this.settings = {
                             webhookUrl: '',
-                            timeout: 30,
+                            timeout: 300,
                             saveHistory: true,
-                            maxMessageLength: 4000
+                            maxMessageLength: 8000
                         };
                     }
                     resolve();
@@ -154,7 +154,7 @@
          * Get sidebar HTML structure
          */
         getSidebarHTML() {
-            const maxLength = this.settings.maxMessageLength || 4000;
+            const maxLength = this.settings.maxMessageLength || 8000;
             return `
                 <!-- Resize Handle -->
                 <div class="ai-chatbot-resize-handle"></div>
@@ -426,7 +426,7 @@
             }
 
             // Enforce max length only on attachments, not on user input typing
-            const maxLength = this.settings.maxMessageLength || 4000;
+            const maxLength = this.settings.maxMessageLength || 8000;
             const totalLength = charCount + attachmentLength;
 
             // Update character count display
@@ -496,7 +496,7 @@
                         let content = attachment._content !== undefined ? attachment._content : (attachment.dataset.content || '');
 
                         // Enforce max length only on attachment content
-                        const maxTotal = (this.settings.maxMessageLength || 4000) - 200; // buffer
+                        const maxTotal = (this.settings.maxMessageLength || 8000) - 200; // buffer
                         const currentUserLen = (this.messageInput.value || '').length;
                         const remainingForAttachment = Math.max(0, maxTotal - currentUserLen);
 
@@ -514,7 +514,7 @@
                 }
 
                 // After composing, enforce global cap as a last resort (should rarely trigger)
-                const maxTotalLength = (this.settings.maxMessageLength || 4000) - 200;
+                const maxTotalLength = (this.settings.maxMessageLength || 8000) - 200;
                 if (completeMessage.length > maxTotalLength) {
                     console.warn('[AI Chatbot] Message too long after per-attachment truncation, applying final cap', completeMessage.length);
                     completeMessage = completeMessage.substring(0, maxTotalLength) + '\n... (message truncated due to length)';
@@ -1423,10 +1423,14 @@
                 if (visible) {
                     this.toggleButton.style.display = 'flex';
                     this.toggleButton.style.opacity = '1';
+                    this.toggleButton.style.pointerEvents = 'auto';
+                    this.toggleButton.disabled = false;
                     console.log('[AI Chatbot] Toggle button shown');
                 } else {
                     this.toggleButton.style.display = 'none';
                     this.toggleButton.style.opacity = '0';
+                    this.toggleButton.style.pointerEvents = 'none';
+                    this.toggleButton.disabled = true;
                     console.log('[AI Chatbot] Toggle button hidden');
 
                     // Also close sidebar if it's open
@@ -1444,9 +1448,13 @@
             if (this.htmlButton) {
                 if (visible) {
                     this.htmlButton.style.display = 'flex';
+                    this.htmlButton.style.pointerEvents = 'auto';
+                    this.htmlButton.disabled = false;
                     console.log('[AI Chatbot] HTML button shown');
                 } else {
                     this.htmlButton.style.display = 'none';
+                    this.htmlButton.style.pointerEvents = 'none';
+                    this.htmlButton.disabled = true;
                     console.log('[AI Chatbot] HTML button hidden');
                 }
             }
@@ -1557,7 +1565,7 @@
                     } else {
                         resolve({
                             webhookUrl: '',
-                            timeout: 30,
+                            timeout: 300,
                             saveHistory: true,
                             sidebarWidth: 400
                         });
